@@ -1,7 +1,19 @@
-#########################################################################
-### Simulation der Daten
-#########################################################################
+# -----------------------------------------------------------------------------
+# Comparison of Cross Validation and Bootstrap
+# R-code
+# -----------------------------------------------------------------------------
 
+# Empty the working dictionary
+rm(list = ls())
+
+# Load necessary packages
+library("Metrics")
+library("cv")
+
+
+###############################################################################
+### Self-written Functions
+###############################################################################
 
 simulation <- function(Laenge, k, 
                             X.means = c(1, 1, 1, 1, 1, 1, 1), 
@@ -11,7 +23,7 @@ simulation <- function(Laenge, k,
                             beta.sd = 1,
                             linear = TRUE) {
   
-  # This function simulates the Data for a linear model 
+  # This function simulates the Data for a linear or classification model 
   
   # Parameters:
   #     Laenge ...... number of observations in the dataset
@@ -65,58 +77,6 @@ simulation <- function(Laenge, k,
 }
 
 
-simsi <- simulation(20, 7, linear = TRUE)
-simsi <- simulation(20, 7, linear = FALSE)
-
-
-
-########################
-### MSE
-########################
-
-library(Metrics)
-mse(2,9)
-
-
-###########
-### Cross-Validation
-##########
-
-# first fit a linear model
-lm1 <- lm(y ~., data = simsi)
-
-library("cv")
-# Function uses MSE per default
-
-# 10 fold
-cross.valid <- cv(lm1)
-summary(cross.valid)
-
-plot(cross.valid)
-plot(cross.valid, what = "coefficients")
-
-# LOOCV
-cross.valid <- cv(lm1, k = "loo")
-summary(cross.valid)
-
-# noch schauen, was das macht:
-# ev. gegen Bias
-cross.valid <- cv(lm1, method = "Woodbury")
-summary(cross.valid)
-cross.valid <- cv(lm1, method = "naive")
-summary(cross.valid)
-
-
-# mehere Egebnisse speichern, später schauen, wie das geht
-as.data.frame(cross.valid)
-
-
-any(1 == c(1, 2, 3))
-
-
-#####################
-### BS
-#####################
 
 bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
   
@@ -250,6 +210,15 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
 }
 
 
+###############################################################################
+### Simulation
+###############################################################################
+simsi <- simulation(20,7)
+
+
+
+
+
 
 bootstrapPE(simsi, estimator = 1)
 bootstrapPE(simsi, estimator = 2)
@@ -259,33 +228,43 @@ bootstrapPE(simsi, estimator = 3)
 
 
 
-# Can I somewhow compute the actual prediction error??
-
-#########
-### classification data
-#########
+# Can I somehow compute the actual prediction error??
 
 
-#########
-### Logistische Regerssion als Klassifikation
-#########
-
-logit <- glm(y ~., family = "binomial", data = simsi)
-
-simsi$y <- sample(c(0,1),  size = 20, replace = TRUE)
 
 
-?sample
-# in-sample error
-logit.preds <- predict(logit, newdata = set, type = "response")
-
-# original sample error
-logit.preds <- predict(logit, newdata = data, type = "response")
+###########
+### Cross-Validation
+##########
 
 
-preds <- ifelse(logit.preds < 0.5, 0, 1)
+
+# first fit a linear model
+lm1 <- lm(y ~., data = simsi)
+
+# Function uses MSE per default
+
+# 10 fold
+cross.valid <- cv(lm1)
+summary(cross.valid)
+
+plot(cross.valid)
+plot(cross.valid, what = "coefficients")
+
+# LOOCV
+cross.valid <- cv(lm1, k = "loo")
+summary(cross.valid)
+
+# noch schauen, was das macht:
+# ev. gegen Bias
+cross.valid <- cv(lm1, method = "Woodbury")
+summary(cross.valid)
+cross.valid <- cv(lm1, method = "naive")
+summary(cross.valid)
 
 
+# mehere Egebnisse speichern, später schauen, wie das geht
+as.data.frame(cross.valid)
 
 
 
