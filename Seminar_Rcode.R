@@ -35,7 +35,9 @@ simulation <- function(Laenge, k,
   #     beta.sd ..... standard deviation of the betas
   #     linear ...... classification model or linear model (default)
 
-  # Output:
+  # Output: list of:
+  #     [1] ... dataframe with simulated X and y
+  #     [2] ... the real beta
   
   X <- numeric(0)                  # X initialisieren
   for (i in 1:k) {                 # Schleife ueber alle Spalten
@@ -58,12 +60,16 @@ simulation <- function(Laenge, k,
                 sd = beta.sd)
   
   # simulate Y
+  ICKSI <- cbind(rep(1, times = Laenge), data) %*% beta
+    
   data <- as.data.frame(cbind(
     cbind(rep(1, times = Laenge), data) %*% beta + eps, data))
 
   
   colnames(data) <- c("y", paste0("x", seq(1:k)))   # Spalten benennen
   
+  # actual prediction error
+  actual <- data$y - cbind(rep(1, times = Laenge), data) %*% beta 
   
   if (!linear) {
   
@@ -73,7 +79,7 @@ simulation <- function(Laenge, k,
   }
   
   
-  return(data)
+  return(list(data, actual))
 }
 
 
@@ -117,17 +123,17 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
   # if B is not numeric or smaller or not positive
   if (!is.numeric(B) || B <=0) {
     stop("B must be numeric and > 0")
-  }
+    }
   
   # if estimator is not 1, 2 or 3
-  if (!any(estimator == c(1, 2, 3)) {
+  if (!any(estimator == c(1, 2, 3))) {
     stop("estimator must be numeric and 1, 2 or 3")
-  }
+    }
   
   # if linear is not TRUE or FALSE
-  if (!any(linear == c(TRUE, FALSE)) {
+  if (!any(linear == c(TRUE, FALSE))) {
     stop("linear must be TRUE or FALSE")
-  }
+    }
   
   ### Computations
   
@@ -181,7 +187,7 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
     }
   }
   
-  # wich estimator shold be used?
+  # which estimator shold be used?
   
   if (estimator == 1) {
     
@@ -213,16 +219,108 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
 ###############################################################################
 ### Simulation
 ###############################################################################
+
+# sample size
+
+n.size <- seq(20, 100)
+k <- 7
+
+simsi <- simulation(n, k)
+
+
+actual <- numeric(0)
+
+for (n in n.size) {
+  
+  simsi <- simulation(n, k)
+  
+  actual <- c(0, mse(simsi[[1]]$y, 
+                     cbind(rep(1, each = n), simsi[[1]][,2:k]) %*% simsi[[2]]))
+  
+  
+}
+
+n <- 20
+simsi <- simulation(n, k)
+
+actual <- c(0, mse(simsi[[1]]$y, 
+                   1))
+
+X <- cbind(rep(1, each = n), simsi[[1]][,2:k+1]) 
+
+b <- matrix(simsi[[2]])
+
+X %*% b
+
+
+
+
+
+BE1 <- numeric(0)
+BE2 <- numeric(0)
+BE3 <- numeric(0)
+
+
+
+for (n in n.size) {
+  
+  simsi <- simulation(n, k)
+  
+  BE1 <- c(BE1, bootstrapPE(simsi[[1]], estimator = 1))
+  BE2 <- c(BE2, bootstrapPE(simsi[[1]], estimator = 2))
+  BE3 <- c(BE3, bootstrapPE(simsi[[1]], estimator = 3))
+  
+}
+
+
+CV10 <- numeric(0)
+CVn <- numeric(0)
+
+
+for (n in n.size) {
+  
+  simsi <- simulation(n, k, linear = TRUE)
+  lm1 <- lm(y ~., data = simsi[[1]])
+  
+  CV10 <- c(CV10, cv(lm1)$`CV crit`[[1]])
+  CVn <- c(CVn, cv(lm1, k = "loo")$`CV crit`[[1]])
+  
+}
+
+
+plot(n.size, BE1, type = "l", 
+     main = "Simulation", 
+     col = "seagreen")
+lines(n.size, BE2, col = "firebrick")
+lines(n.size, BE3, col = "darkblue")
+lines(n.size, CV10, col = "pink")
+lines(n.size, CVn, col = "lightblue")
+
+
+
+for (n in n.size) {
+  
+  simsi <- simulation(n, k, linear = FALSE)
+  
+  BE1 <- c(BE1, bootstrapPE(simsi[[1]], estimator = 1, linear = FALSE))
+  BE2 <- c(BE2, bootstrapPE(simsi[[1]], estimator = 2, linear = FALSE))
+  BE3 <- c(BE3, bootstrapPE(simsi[[1]], estimator = 3, linear = FALSE))
+  
+}
+
+plot(n.size, BE1, type = "l", 
+     main = "Simulation", col = "seagreen")
+lines(n.size, BE2, col = "firebrick")
+lines(n.size, BE3, col = "darkblue")
+
+
+
 simsi <- simulation(20,7)
 
 
-
-
-
-
-bootstrapPE(simsi, estimator = 1)
-bootstrapPE(simsi, estimator = 2)
-bootstrapPE(simsi, estimator = 3)
+bootstrapPE(simsi[[1]], estimator = 1)
+bootstrapPE(simsi[[1]], estimator = 2)
+bootstrapPE(simsi[[1]], estimator = 3)
 
 
 
@@ -247,6 +345,7 @@ lm1 <- lm(y ~., data = simsi)
 # 10 fold
 cross.valid <- cv(lm1)
 summary(cross.valid)
+cross.valid$`CV crit`[[1]]
 
 plot(cross.valid)
 plot(cross.valid, what = "coefficients")
