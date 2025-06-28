@@ -60,16 +60,12 @@ simulation <- function(Laenge, k,
                 sd = beta.sd)
   
   # simulate Y
-  ICKSI <- cbind(rep(1, times = Laenge), data) %*% beta
-    
   data <- as.data.frame(cbind(
     cbind(rep(1, times = Laenge), data) %*% beta + eps, data))
 
   
   colnames(data) <- c("y", paste0("x", seq(1:k)))   # Spalten benennen
   
-  # actual prediction error
-  actual <- data$y - cbind(rep(1, times = Laenge), data) %*% beta 
   
   if (!linear) {
   
@@ -79,7 +75,7 @@ simulation <- function(Laenge, k,
   }
   
   
-  return(list(data, actual))
+  return(list(data, eps))
 }
 
 
@@ -150,7 +146,7 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
   for (i in 1:B) {
     
     # draw a Bootrap sample of the same size as the original dataset
-    set <- simsi[sample(1:n, size = n, 
+    set <- data[sample(1:n, size = n, 
                         replace = TRUE),] # with replacement
     
     if (linear) {
@@ -221,50 +217,32 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
 ###############################################################################
 
 # sample size
+n.size <- seq(30, 100)
+k <- 5
 
-n.size <- seq(20, 100)
-k <- 7
-
-simsi <- simulation(n, k)
-
+# seed to haf a coherent result
+set.seed(123)
 
 actual <- numeric(0)
 
-for (n in n.size) {
+for (num in n.size) {
   
-  simsi <- simulation(n, k)
-  
-  actual <- c(0, mse(simsi[[1]]$y, 
-                     cbind(rep(1, each = n), simsi[[1]][,2:k]) %*% simsi[[2]]))
-  
+  simsi <- simulation(num, k)
+  actual <- c(actual, mean(simsi[[2]]^2))
+
   
 }
 
-n <- 20
-simsi <- simulation(n, k)
 
-actual <- c(0, mse(simsi[[1]]$y, 
-                   1))
-
-X <- cbind(rep(1, each = n), simsi[[1]][,2:k+1]) 
-
-b <- matrix(simsi[[2]])
-
-X %*% b
-
-
-
-
+set.seed(123)
 
 BE1 <- numeric(0)
 BE2 <- numeric(0)
 BE3 <- numeric(0)
 
-
-
-for (n in n.size) {
+for (num in n.size) {
   
-  simsi <- simulation(n, k)
+  simsi <- simulation(num, k)
   
   BE1 <- c(BE1, bootstrapPE(simsi[[1]], estimator = 1))
   BE2 <- c(BE2, bootstrapPE(simsi[[1]], estimator = 2))
@@ -273,6 +251,9 @@ for (n in n.size) {
 }
 
 
+
+set.seed(123)
+
 CV10 <- numeric(0)
 CVn <- numeric(0)
 
@@ -280,6 +261,7 @@ CVn <- numeric(0)
 for (n in n.size) {
   
   simsi <- simulation(n, k, linear = TRUE)
+
   lm1 <- lm(y ~., data = simsi[[1]])
   
   CV10 <- c(CV10, cv(lm1)$`CV crit`[[1]])
@@ -288,16 +270,27 @@ for (n in n.size) {
 }
 
 
-plot(n.size, BE1, type = "l", 
+# Difference to the actual value
+actual - BE1
+
+
+plot(n.size, BE1 - actual, type = "l", 
      main = "Simulation", 
-     col = "seagreen")
-lines(n.size, BE2, col = "firebrick")
-lines(n.size, BE3, col = "darkblue")
-lines(n.size, CV10, col = "pink")
-lines(n.size, CVn, col = "lightblue")
+     col = "seagreen", 
+     ylim = c(min(c(BE1, BE2, BE3, CV10, CVn) - actual), 
+              max(c(BE1, BE2, BE3, CV10, CVn) - actual)))
+lines(n.size, BE2 - actual, col = "firebrick")
+lines(n.size, BE3 - actual, col = "darkblue")
+lines(n.size, CV10 - actual, col = "pink")
+lines(n.size, CVn - actual, col = "lightblue")
+abline(h = 0)
 
 
 
+
+
+
+### classification
 for (n in n.size) {
   
   simsi <- simulation(n, k, linear = FALSE)
