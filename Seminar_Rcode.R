@@ -221,7 +221,7 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
 seed <- 123
 
 # sample size
-n.size <- seq(20, 30)
+n.size <- seq(20, 60)
 # number of covaraites
 k <- 5
 
@@ -247,6 +247,18 @@ v.CVn <- numeric(0)
 v.actual <- numeric(0)
 
 
+# measure the time
+time1 <- numeric(0)
+time2 <- numeric(0)
+time3 <- numeric(0)
+time4 <- numeric(0)
+time5 <- numeric(0)
+time6 <- numeric(0)
+
+
+
+
+
 set.seed(seed)
 simsi <- simulation(max(n.size), k = k)
 
@@ -264,41 +276,45 @@ for (num in n.size) {
   CVn <- numeric(0)
   
   
+  time1 <- c(time1, system.time(
   for (o in 1:howoften) {
     BE1 <- c(BE1, bootstrapPE(simsala[[1]], estimator = 1))
   }
+  ) [1])
   
-  
+  time2 <- c(time2, system.time(
   for (o in 1:howoften) {
     BE2 <- c(BE2, bootstrapPE(simsala[[1]], estimator = 2))
   }
+  ) [1])
   
-  
+  time3 <- c(time3, system.time(
   for (o in 1:howoften) {
     BE3 <- c(BE3, bootstrapPE(simsala[[1]], estimator = 3))
   }
+  ) [1])
   
-  
-  
-  for (o in 1:howoften) {
-    actual <- c(actual, mean(simsala[[2]]^2))
-  }
-  
-  
+  time4 <- c(time4, system.time(
   for (o in 1:howoften) {
     
     lm1 <- lm(y ~., data = simsala[[1]])
-    
     CV10 <- c(CV10, cv(lm1)$`CV crit`[[1]])  
   }
+  ) [1])
   
-  
+  time5 <- c(time5, system.time(
   for (o in 1:howoften) {
     
     lm1 <- lm(y ~., data = simsala[[1]])
-    
     CVn <- c(CVn, cv(lm1, k = "loo")$`CV crit`[[1]])
   }
+  ) [1])
+  
+  time6 <- c(time6, system.time(
+    for (o in 1:howoften) {
+      actual <- c(actual, mean(simsala[[2]]^2))
+    }
+  ) [1])
   
   
   m.BE1 <- c(m.BE1, mean(BE1))
@@ -320,7 +336,6 @@ for (num in n.size) {
 
 
 
-
 # plot
 nnn <- n.size[1:length(m.BE1)]
 
@@ -329,6 +344,8 @@ limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual),
 limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn, v.actual), 
             max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn, v.actual))
 
+limits.time <- c(min(time1, time2, time3, time4, time5, time6), 
+              max(time1, time2, time3, time4, time5, time6))
 
 lwd <- 2
 
@@ -360,126 +377,19 @@ lines(nnn, v.actual, col = "black", lwd = lwd)
 
 
 
-
-
-
-################################################################################
-k <- 5
-
-# seed to have a coherent result
-set.seed(123)
-
-actual <- numeric(0)
-
-for (num in n.size) {
-  
-  simsi <- simulation(num, k)
-  actual <- c(actual, mean(simsi[[2]]^2))
-
-  
-}
-
-
-set.seed(123)
-
-BE1 <- numeric(0)
-BE2 <- numeric(0)
-BE3 <- numeric(0)
-
-for (num in n.size) {
-  
-  simsi <- simulation(num, k)
-  
-  BE1 <- c(BE1, bootstrapPE(simsi[[1]], estimator = 1))
-  BE2 <- c(BE2, bootstrapPE(simsi[[1]], estimator = 2))
-  BE3 <- c(BE3, bootstrapPE(simsi[[1]], estimator = 3))
-  
-}
-
-
-
-set.seed(123)
-
-CV10 <- numeric(0)
-CVn <- numeric(0)
-
-
-for (n in n.size) {
-  
-  simsi <- simulation(n, k, linear = TRUE)
-
-  lm1 <- lm(y ~., data = simsi[[1]])
-  
-  CV10 <- c(CV10, cv(lm1)$`CV crit`[[1]])
-  CVn <- c(CVn, cv(lm1, k = "loo")$`CV crit`[[1]])
-  
-}
-
-
-# Difference to the actual value
-actual - BE1
-
-
-plot(n.size, BE1 - actual, type = "l", 
-     main = "Simulation", 
-     col = "seagreen", 
-     ylim = c(min(c(BE1, BE2, BE3, CV10, CVn) - actual), 
-              max(c(BE1, BE2, BE3, CV10, CVn) - actual)))
-lines(n.size, BE2 - actual, col = "firebrick")
-lines(n.size, BE3 - actual, col = "darkblue")
-lines(n.size, CV10 - actual, col = "pink")
-lines(n.size, CVn - actual, col = "lightblue")
-abline(h = 0)
-
-
-mean(BE1 - actual)
-mean(BE2 - actual)
-mean(BE3 - actual)
-mean(CV10 - actual)
-mean(CVn - actual)
-
-
-var(BE1 - actual)
-var(BE2 - actual)
-var(BE3 - actual)
-var(CV10 - actual)
-var(CVn - actual)
-
-
-
-
-
-### classification
-for (n in n.size) {
-  
-  simsi <- simulation(n, k, linear = FALSE)
-  
-  BE1 <- c(BE1, bootstrapPE(simsi[[1]], estimator = 1, linear = FALSE))
-  BE2 <- c(BE2, bootstrapPE(simsi[[1]], estimator = 2, linear = FALSE))
-  BE3 <- c(BE3, bootstrapPE(simsi[[1]], estimator = 3, linear = FALSE))
-  
-}
-
-plot(n.size, BE1, type = "l", 
-     main = "Simulation", col = "seagreen")
-lines(n.size, BE2, col = "firebrick")
-lines(n.size, BE3, col = "darkblue")
-
-
-
-simsi <- simulation(20,7)
-
-
-bootstrapPE(simsi[[1]], estimator = 1)
-bootstrapPE(simsi[[1]], estimator = 2)
-bootstrapPE(simsi[[1]], estimator = 3)
-
-
-
-
-
-# Can I somehow compute the actual prediction error??
-
+plot(nnn, time1, type = "l", 
+     main = "", 
+     col = "lightgreen", 
+     lwd = lwd, 
+     ylim = limits.time,
+     xlab = "sample size", ylab = paste("Time to use the method", 
+                                        howoften, 
+                                        "times in seconds"))
+lines(nnn, time2, col = "seagreen", lwd = lwd)
+lines(nnn, time3, col = "darkgreen", lwd = lwd)
+lines(nnn, time4, col = "firebrick", lwd = lwd)
+lines(nnn, time5, col = "darkred", lwd = lwd)
+lines(nnn, time6, col = "black", lwd = lwd)
 
 
 
