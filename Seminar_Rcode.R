@@ -18,7 +18,7 @@ library("cv")
 simulation <- function(Laenge, k, 
                             X.means = c(1, 1, 1, 1, 1, 1, 1), 
                             X.sd = c(1, 1, 1, 1, 1, 1, 1), 
-                            eps.sd = 1, 
+                            eps.sd = 6, 
                             beta.mean = 0, 
                             beta.sd = 1,
                             linear = TRUE) {
@@ -78,7 +78,6 @@ simulation <- function(Laenge, k,
   
   return(list(data, eps))
 }
-
 
 
 bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
@@ -231,7 +230,7 @@ howoften <- 30
 
 
 
-
+# mean
 m.BE1 <- numeric(0)
 m.BE2 <- numeric(0)
 m.BE3 <- numeric(0)
@@ -239,6 +238,7 @@ m.CV10 <- numeric(0)
 m.CVn <- numeric(0)
 m.actual <- numeric(0)
 
+# Variance
 v.BE1 <- numeric(0)
 v.BE2 <- numeric(0)
 v.BE3 <- numeric(0)
@@ -349,47 +349,47 @@ limits.time <- c(min(time1, time2, time3, time4, time5, time6),
 
 lwd <- 2
 
-plot(nnn, m.BE1, type = "l", 
+plot(nnn, m.actual, type = "l", 
      main = "", 
-     col = "lightgreen", 
+     col = "black", 
      lwd = lwd, 
      ylim = limits.m,
      xlab = "sample size", ylab = "Mean of the prediction error")
-lines(nnn, m.BE2, col = "seagreen", lwd = lwd)
-lines(nnn, m.BE3, col = "darkgreen", lwd = lwd)
+lines(nnn, m.BE1, col = "lightgreen", lwd = lwd)
+lines(nnn, m.BE2, col = "seagreen", lwd = lwd, lty = 2)
+lines(nnn, m.BE3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(nnn, m.CV10, col = "firebrick", lwd = lwd)
-lines(nnn, m.CVn, col = "darkred", lwd = lwd)
-lines(nnn, m.actual, col = "black", lwd = lwd)
+lines(nnn, m.CVn, col = "darkred", lwd = lwd, lty = 2)
 
 
-plot(nnn, v.BE1, type = "l", 
+plot(nnn, sqrt(v.actual), type = "l", 
      main = "", 
-     col = "lightgreen", 
+     col = "black", 
      lwd = lwd, 
      ylim = limits.v,
      xlab = "sample size", ylab = "Variance of the prediction error")
-lines(nnn, v.BE2, col = "seagreen", lwd = lwd)
-lines(nnn, v.BE3, col = "darkgreen", lwd = lwd)
-lines(nnn, v.CV10, col = "firebrick", lwd = lwd)
-lines(nnn, v.CVn, col = "darkred", lwd = lwd)
-lines(nnn, v.actual, col = "black", lwd = lwd)
+lines(nnn, sqrt(v.BE1), col = "lightgreen", lwd = lwd)
+lines(nnn, sqrt(v.BE2), col = "seagreen", lwd = lwd, lty = 2)
+lines(nnn, sqrt(v.BE3), col = "darkgreen", lwd = lwd, lty = 3)
+lines(nnn, sqrt(v.CV10), col = "firebrick", lwd = lwd)
+lines(nnn, sqrt(v.CVn), col = "darkred", lwd = lwd, lty = 2)
 
 
 
 
-plot(nnn, time1, type = "l", 
+plot(nnn, time6, type = "l", 
      main = "", 
-     col = "lightgreen", 
+     col = "black", 
      lwd = lwd, 
      ylim = limits.time,
-     xlab = "sample size", ylab = paste("Time to use the method", 
+     xlab = "sample size", ylab = paste("CPU time of the method", 
                                         howoften, 
                                         "times in seconds"))
-lines(nnn, time2, col = "seagreen", lwd = lwd)
-lines(nnn, time3, col = "darkgreen", lwd = lwd)
+lines(nnn, time1, col = "lightgreen", lwd = lwd)
+lines(nnn, time2, col = "seagreen", lwd = lwd, lty = 2)
+lines(nnn, time3, col = "darkgreen", lwd = lwd, tlty = 3)
 lines(nnn, time4, col = "firebrick", lwd = lwd)
-lines(nnn, time5, col = "darkred", lwd = lwd)
-lines(nnn, time6, col = "black", lwd = lwd)
+lines(nnn, time5, col = "darkred", lwd = lwd, lty = 2)
 
 
 
