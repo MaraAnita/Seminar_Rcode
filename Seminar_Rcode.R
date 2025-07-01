@@ -26,6 +26,7 @@ simulation <- function(Laenge, k,
   # This function simulates the Data for a linear or classification model 
   
   # Parameters:
+  #     howoften .... how many datasets should be generated?
   #     Laenge ...... number of observations in the dataset
   #     k ........... number of covariates
   #     X.means ..... mean of the covariates
@@ -35,10 +36,11 @@ simulation <- function(Laenge, k,
   #     beta.sd ..... standard deviation of the betas
   #     linear ...... classification model or linear model (default)
 
-  # Output: list of:
+  # Output: list containing:
   #     [1] ... dataframe with simulated X and y
-  #     [2] ... the real beta
+  #     [2] ... the actual error term
   
+
   X <- numeric(0)                  # X initialisieren
   for (i in 1:k) {                 # Schleife ueber alle Spalten
     X <- c(X, rnorm(n = Laenge,    # mittels normalverteilung
@@ -73,7 +75,6 @@ simulation <- function(Laenge, k,
     data$y <- as.numeric(mean(data$y) > data$y)
     
   }
-  
   
   return(list(data, eps))
 }
@@ -212,15 +213,160 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
 }
 
 
+
+
 ###############################################################################
 ### Simulation
 ###############################################################################
+seed <- 123
 
 # sample size
-n.size <- seq(30, 100)
+n.size <- seq(20, 30)
+# number of covaraites
 k <- 5
 
-# seed to haf a coherent result
+
+# how many replications on the same dataset?
+howoften <- 30
+
+
+
+
+m.BE1 <- numeric(0)
+m.BE2 <- numeric(0)
+m.BE3 <- numeric(0)
+m.CV10 <- numeric(0)
+m.CVn <- numeric(0)
+m.actual <- numeric(0)
+
+v.BE1 <- numeric(0)
+v.BE2 <- numeric(0)
+v.BE3 <- numeric(0)
+v.CV10 <- numeric(0)
+v.CVn <- numeric(0)
+v.actual <- numeric(0)
+
+
+set.seed(seed)
+simsi <- simulation(max(n.size), k = k)
+
+for (num in n.size) {
+  
+  # have nested models
+  simsala <- list(simsi[[1]][1:num,], simsi[[2]][1:num])
+  
+  # apply bootstrap and CV to each simulation
+  BE1 <- numeric(0)
+  BE2 <- numeric(0)
+  BE3 <- numeric(0)
+  actual <- numeric(0)
+  CV10 <- numeric(0)
+  CVn <- numeric(0)
+  
+  
+  for (o in 1:howoften) {
+    BE1 <- c(BE1, bootstrapPE(simsala[[1]], estimator = 1))
+  }
+  
+  
+  for (o in 1:howoften) {
+    BE2 <- c(BE2, bootstrapPE(simsala[[1]], estimator = 2))
+  }
+  
+  
+  for (o in 1:howoften) {
+    BE3 <- c(BE3, bootstrapPE(simsala[[1]], estimator = 3))
+  }
+  
+  
+  
+  for (o in 1:howoften) {
+    actual <- c(actual, mean(simsala[[2]]^2))
+  }
+  
+  
+  for (o in 1:howoften) {
+    
+    lm1 <- lm(y ~., data = simsala[[1]])
+    
+    CV10 <- c(CV10, cv(lm1)$`CV crit`[[1]])  
+  }
+  
+  
+  for (o in 1:howoften) {
+    
+    lm1 <- lm(y ~., data = simsala[[1]])
+    
+    CVn <- c(CVn, cv(lm1, k = "loo")$`CV crit`[[1]])
+  }
+  
+  
+  m.BE1 <- c(m.BE1, mean(BE1))
+  m.BE2 <- c(m.BE2, mean(BE2))
+  m.BE3 <- c(m.BE3, mean(BE3))
+  m.CV10 <- c(m.CV10, mean(CV10))
+  m.CVn <- c(m.CVn, mean(CVn))
+  m.actual <- c(m.actual, mean(actual))
+  
+  v.BE1 <- c(v.BE1, var(BE1))
+  v.BE2 <- c(v.BE2, var(BE2))
+  v.BE3 <- c(v.BE3, var(BE3))
+  v.CV10 <- c(v.CV10, var(CV10))
+  v.CVn <- c(v.CVn, var(CVn))
+  v.actual <- c(v.actual, var(actual))
+
+
+}
+
+
+
+
+# plot
+nnn <- n.size[1:length(m.BE1)]
+
+limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual), 
+              max(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual))
+limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn, v.actual), 
+            max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn, v.actual))
+
+
+lwd <- 2
+
+plot(nnn, m.BE1, type = "l", 
+     main = "", 
+     col = "lightgreen", 
+     lwd = lwd, 
+     ylim = limits.m,
+     xlab = "sample size", ylab = "Mean of the prediction error")
+lines(nnn, m.BE2, col = "seagreen", lwd = lwd)
+lines(nnn, m.BE3, col = "darkgreen", lwd = lwd)
+lines(nnn, m.CV10, col = "firebrick", lwd = lwd)
+lines(nnn, m.CVn, col = "darkred", lwd = lwd)
+lines(nnn, m.actual, col = "black", lwd = lwd)
+
+
+plot(nnn, v.BE1, type = "l", 
+     main = "", 
+     col = "lightgreen", 
+     lwd = lwd, 
+     ylim = limits.v,
+     xlab = "sample size", ylab = "Variance of the prediction error")
+lines(nnn, v.BE2, col = "seagreen", lwd = lwd)
+lines(nnn, v.BE3, col = "darkgreen", lwd = lwd)
+lines(nnn, v.CV10, col = "firebrick", lwd = lwd)
+lines(nnn, v.CVn, col = "darkred", lwd = lwd)
+lines(nnn, v.actual, col = "black", lwd = lwd)
+
+
+
+
+
+
+
+################################################################################
+k <- 5
+
+# seed to have a coherent result
 set.seed(123)
 
 actual <- numeric(0)
@@ -285,6 +431,19 @@ lines(n.size, CV10 - actual, col = "pink")
 lines(n.size, CVn - actual, col = "lightblue")
 abline(h = 0)
 
+
+mean(BE1 - actual)
+mean(BE2 - actual)
+mean(BE3 - actual)
+mean(CV10 - actual)
+mean(CVn - actual)
+
+
+var(BE1 - actual)
+var(BE2 - actual)
+var(BE3 - actual)
+var(CV10 - actual)
+var(CVn - actual)
 
 
 
