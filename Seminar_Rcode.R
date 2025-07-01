@@ -217,7 +217,7 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
 ###############################################################################
 ### Simulation
 ###############################################################################
-seed <- 123
+seed <- 1234
 
 # sample size
 n.size <- seq(20, 60)
@@ -229,7 +229,9 @@ k <- 5
 howoften <- 30
 
 
+### linear model
 
+{
 # mean
 m.BE1 <- numeric(0)
 m.BE2 <- numeric(0)
@@ -390,6 +392,190 @@ lines(nnn, time2, col = "seagreen", lwd = lwd, lty = 2)
 lines(nnn, time3, col = "darkgreen", lwd = lwd, tlty = 3)
 lines(nnn, time4, col = "firebrick", lwd = lwd)
 lines(nnn, time5, col = "darkred", lwd = lwd, lty = 2)
+
+}
+
+
+
+
+
+
+### Classification
+
+
+
+
+
+
+
+{
+  # mean
+  m.BE1 <- numeric(0)
+  m.BE2 <- numeric(0)
+  m.BE3 <- numeric(0)
+  m.CV10 <- numeric(0)
+  m.CVn <- numeric(0)
+  m.actual <- numeric(0)
+  
+  # Variance
+  v.BE1 <- numeric(0)
+  v.BE2 <- numeric(0)
+  v.BE3 <- numeric(0)
+  v.CV10 <- numeric(0)
+  v.CVn <- numeric(0)
+  v.actual <- numeric(0)
+  
+  
+  # measure the time
+  time1 <- numeric(0)
+  time2 <- numeric(0)
+  time3 <- numeric(0)
+  time4 <- numeric(0)
+  time5 <- numeric(0)
+  time6 <- numeric(0)
+  
+  
+  
+  
+  
+  set.seed(seed)
+  simsi <- simulation(max(n.size), k = k, linear = FALSE)
+  
+  for (num in n.size) {
+    
+    # have nested models
+    simsala <- list(simsi[[1]][1:num,], simsi[[2]][1:num])
+    
+    # apply bootstrap and CV to each simulation
+    BE1 <- numeric(0)
+    BE2 <- numeric(0)
+    BE3 <- numeric(0)
+    actual <- numeric(0)
+    CV10 <- numeric(0)
+    CVn <- numeric(0)
+    
+    
+    time1 <- c(time1, system.time(
+      for (o in 1:howoften) {
+        BE1 <- c(BE1, bootstrapPE(simsala[[1]], estimator = 1, linear = FALSE))
+      }
+    ) [1])
+    
+    time2 <- c(time2, system.time(
+      for (o in 1:howoften) {
+        BE2 <- c(BE2, bootstrapPE(simsala[[1]], estimator = 2, linear = FALSE))
+      }
+    ) [1])
+    
+    time3 <- c(time3, system.time(
+      for (o in 1:howoften) {
+        BE3 <- c(BE3, bootstrapPE(simsala[[1]], estimator = 3, linear = FALSE))
+      }
+    ) [1])
+    
+    time4 <- c(time4, system.time(
+      for (o in 1:howoften) {
+        
+        logit <- glm(y ~., family = "binomial", data = set)
+        CV10 <- c(CV10, cv(logit)$`CV crit`[[1]])  
+      }
+    ) [1])
+    
+    time5 <- c(time5, system.time(
+      for (o in 1:howoften) {
+        
+        logit <- glm(y ~., family = "binomial", data = set)
+        CVn <- c(CVn, cv(logit, k = "loo")$`CV crit`[[1]])
+      }
+    ) [1])
+    
+    time6 <- c(time6, system.time(
+      for (o in 1:howoften) {
+        actual <- c(actual, mean(simsala[[2]]^2))
+      }
+    ) [1])
+    
+    
+    m.BE1 <- c(m.BE1, mean(BE1))
+    m.BE2 <- c(m.BE2, mean(BE2))
+    m.BE3 <- c(m.BE3, mean(BE3))
+    m.CV10 <- c(m.CV10, mean(CV10))
+    m.CVn <- c(m.CVn, mean(CVn))
+    m.actual <- c(m.actual, mean(actual))
+    
+    v.BE1 <- c(v.BE1, var(BE1))
+    v.BE2 <- c(v.BE2, var(BE2))
+    v.BE3 <- c(v.BE3, var(BE3))
+    v.CV10 <- c(v.CV10, var(CV10))
+    v.CVn <- c(v.CVn, var(CVn))
+    v.actual <- c(v.actual, var(actual))
+    
+    
+  }
+  
+  
+  
+  # plot
+  nnn <- n.size[1:length(m.BE1)]
+  
+  limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual), 
+                max(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual))
+  limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn, v.actual), 
+                max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn, v.actual))
+  
+  limits.time <- c(min(time1, time2, time3, time4, time5, time6), 
+                   max(time1, time2, time3, time4, time5, time6))
+  
+  lwd <- 2
+  
+  plot(nnn, m.actual, type = "l", 
+       main = "", 
+       col = "black", 
+       lwd = lwd, 
+       ylim = limits.m,
+       xlab = "sample size", ylab = "Mean of the prediction error")
+  lines(nnn, m.BE1, col = "lightgreen", lwd = lwd)
+  lines(nnn, m.BE2, col = "seagreen", lwd = lwd, lty = 2)
+  lines(nnn, m.BE3, col = "darkgreen", lwd = lwd, lty = 3)
+  lines(nnn, m.CV10, col = "firebrick", lwd = lwd)
+  lines(nnn, m.CVn, col = "darkred", lwd = lwd, lty = 2)
+  
+  
+  plot(nnn, sqrt(v.actual), type = "l", 
+       main = "", 
+       col = "black", 
+       lwd = lwd, 
+       ylim = limits.v,
+       xlab = "sample size", ylab = "Variance of the prediction error")
+  lines(nnn, sqrt(v.BE1), col = "lightgreen", lwd = lwd)
+  lines(nnn, sqrt(v.BE2), col = "seagreen", lwd = lwd, lty = 2)
+  lines(nnn, sqrt(v.BE3), col = "darkgreen", lwd = lwd, lty = 3)
+  lines(nnn, sqrt(v.CV10), col = "firebrick", lwd = lwd)
+  lines(nnn, sqrt(v.CVn), col = "darkred", lwd = lwd, lty = 2)
+  
+  
+  
+  
+  plot(nnn, time6, type = "l", 
+       main = "", 
+       col = "black", 
+       lwd = lwd, 
+       ylim = limits.time,
+       xlab = "sample size", ylab = paste("CPU time of the method", 
+                                          howoften, 
+                                          "times in seconds"))
+  lines(nnn, time1, col = "lightgreen", lwd = lwd)
+  lines(nnn, time2, col = "seagreen", lwd = lwd, lty = 2)
+  lines(nnn, time3, col = "darkgreen", lwd = lwd, tlty = 3)
+  lines(nnn, time4, col = "firebrick", lwd = lwd)
+  lines(nnn, time5, col = "darkred", lwd = lwd, lty = 2)
+  
+}
+
+
+
+
+
 
 
 
