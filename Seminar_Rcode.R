@@ -18,17 +18,16 @@ library("cv")
 # -----------------------------------------------------------------------------
 
 simulation <- function(Laenge, k, 
-                            X.means = c(1, 1, 1, 1, 1, 1, 1), 
-                            X.sd = c(1, 1, 1, 1, 1, 1, 1), 
-                            eps.sd = 6, 
+                            X.means = rep(1, length = k), 
+                            X.sd =  rep(1, length = k), 
+                            eps.sd = 80, 
                             beta.mean = 0, 
-                            beta.sd = 1,
+                            beta.sd = 3,
                             linear = TRUE) {
   
   # This function simulates the Data for a linear or classification model 
   
   # Parameters:
-  #     howoften .... how many datasets should be generated?
   #     Laenge ...... number of observations in the dataset
   #     k ........... number of covariates
   #     X.means ..... mean of the covariates
@@ -56,7 +55,7 @@ simulation <- function(Laenge, k,
   
   
   # simulate the error term
-  eps <- rnorm(Laenge, 0, 0.75)
+  eps <- rnorm(Laenge, 1, 0.75)
   
   # simulate beta
   beta <- rnorm(n = k+1, 
@@ -228,7 +227,7 @@ seed <- 1234
 n.size <- seq(100, 120)
 
 # number of covaraites
-k <- 5
+k <- 10
 
 # Bootstrap and Cross Validation are fit repeatedly to to calculate 
 # the mean and variance of the methods
@@ -305,7 +304,7 @@ for (num in n.size) {
   for (o in 1:howoften) {
     
     lm1 <- lm(y ~., data = simsala[[1]])
-    CV10 <- c(CV10, cv(lm1)$`CV crit`[[1]])  # cv() 
+    CV10 <- c(CV10, cv(lm1)$`CV crit`[[1]])  # cv(), 10-fold is default
   }
   ) [1] / howoften)
   
@@ -313,7 +312,7 @@ for (num in n.size) {
   for (o in 1:howoften) {
     
     lm1 <- lm(y ~., data = simsala[[1]])
-    CVn <- c(CVn, cv(lm1, k = "loo")$`CV crit`[[1]])
+    CVn <- c(CVn, cv(lm1, k = "loo")$`CV crit`[[1]]) # "loo" for k = n
   }
   ) [1] / howoften)
   
