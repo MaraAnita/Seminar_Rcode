@@ -100,3 +100,21 @@ as.data.frame(cross.valid)
 
 
 
+######
+
+
+paste(c("h", "i"))#, c("a", "b"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
