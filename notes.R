@@ -1,76 +1,102 @@
-install.packages("simstudy")
-library(simstudy)
-
-
-simulation <- function(k, n, linear = TRUE) {
+simulation <- function(Laenge, k, 
+                       X.means = rep(1, length = k), 
+                       X.sd =  rep(1, length = k), 
+                       eps.sd = 80, 
+                       beta.mean = 0, 
+                       beta.sd = 3,
+                       linear = TRUE) {
   
-  # This function simulates the Data for a linear regression model or a binary 
-  # classification model 
+  # This function simulates the Data for a linear or classification model 
   
   # Parameters:
-      # k ... number of covariables
-      # n ... number of observations
-      # linear ... linear regression model or binary classification model
+  #     Laenge ...... number of observations in the dataset
+  #     k ........... number of covariates
+  #     X.means ..... mean of the covariates
+  #     X.sd ........ standard deviation of the covariates
+  #     eps.sd ...... mean of the error term
+  #     beta.mean ... mean of the betas
+  #     beta.sd ..... standard deviation of the betas
+  #     linear ...... classification model or linear model (default)
   
-  # Output:
-      # data set with columns y, x_1, ... x_k
-  
-  
-  
-  ### simulate X and beta step by step
-  # X_1
-  i <- 1
-  Xname <- paste0("x", i)
-  def <- defData(varname = Xname, 
-                 dist = "normal", 
-                 formula = 0, 
-                 variance = 1) 
-  # beta_1
-  beta <- rnorm(n = 1, mean = 5, sd = 20)
-  # update the formula
-  formula <- paste("1 +", beta, "*", Xname)
+  # Output: list containing:
+  #     [1] ... dataframe with simulated X and y
+  #     [2] ... the actual error term
   
   
-  for (i in 2:k) {
-    # name of the coulum
-    Xname <- paste0("x", i)
+  X <- numeric(0)                  # X initialisieren
+  for (i in 1:k) {                 # Schleife ueber alle Spalten
+    X <- c(X, rnorm(n = Laenge,    # mittels normalverteilung
+                    X.means[i], 
+                    X.sd[i]))
+  }
+  
+  data <- matrix(X, 
+                 nrow = Laenge,
+                 byrow = FALSE)             # Spaltenweise befuellen
+  
+  
+  # simulate the error term
+  eps <- rnorm(Laenge, 1, 0.75)
+  
+  # simulate beta
+  beta <- rnorm(n = k+1, 
+                mean = beta.mean, 
+                sd = beta.sd)
+  
+  # simulate Y
+  data <- as.data.frame(cbind(
+    cbind(rep(1, times = Laenge), data) %*% beta + eps, data))
+  
+  
+  colnames(data) <- c("y", paste0("x", seq(1:k)))   # Spalten benennen
+  
+  
+  if (!linear) {
     
-    # X_i
-    def <- defData(def, 
-                   varname = Xname, 
-                   dist = "normal", 
-                   formula = 0, 
-                   variance = 1) 
-    # beta_i
-    beta <- rnorm(n = 1, mean = 5, sd = 20)
-    
-    # update the formula
-    formula <- paste(formula, "+", beta, "*", Xname)
+    # If y is bigger than the mean of y: 1, else 0
+    data$y <- as.numeric(mean(data$y) > data$y)
     
   }
   
-  if (linear) {
-    
-    # generate Y according to the formula
-    def <- defData(def, 
-                   varname = "y", 
-                   dist = "normal", 
-                   formula = formula, 
-                   variance = 1)
-  } else {
-  
-    # generate a binary Y according to the formula
-    def <- defData(def, 
-                   varname = "y", 
-                   dist = "binary",
-                   formula = formula, 
-                   variance = 1,
-                   link = "logit")
-  }
-  
-  data <- genData(n, def)   # generate the data
-  data$id <- NULL           # delete id colum
-  return(data)              # return the dataset
+  return(list(data, eps))
 }
+
+
+###########
+### Cross-Validation
+##########
+
+
+
+# first fit a linear model
+lm1 <- lm(y ~., data = simsi)
+
+# Function uses MSE per default
+
+# 10 fold
+cross.valid <- cv(lm1)
+summary(cross.valid)
+cross.valid$`CV crit`[[1]]
+
+plot(cross.valid)
+plot(cross.valid, what = "coefficients")
+
+# LOOCV
+cross.valid <- cv(lm1, k = "loo")
+summary(cross.valid)
+
+# noch schauen, was das macht:
+# ev. gegen Bias
+cross.valid <- cv(lm1, method = "Woodbury")
+summary(cross.valid)
+cross.valid <- cv(lm1, method = "naive")
+summary(cross.valid)
+
+
+# mehere Egebnisse speichern, später schauen, wie das geht
+as.data.frame(cross.valid)
+
+
+
 
 

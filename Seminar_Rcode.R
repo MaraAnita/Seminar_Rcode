@@ -1,8 +1,8 @@
 # -----------------------------------------------------------------------------
-#
+# -----------------------------------------------------------------------------
 # Comparison of Cross Validation and Bootstrap
 # R-code
-#
+# -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 
 # Empty the working dictionary
@@ -11,75 +11,12 @@ rm(list = ls())
 # Load necessary packages
 library("Metrics")
 library("cv")
+library(simstudy)
 
 
 # -----------------------------------------------------------------------------
 # Self-written Functions
 # -----------------------------------------------------------------------------
-
-simulation <- function(Laenge, k, 
-                            X.means = rep(1, length = k), 
-                            X.sd =  rep(1, length = k), 
-                            eps.sd = 80, 
-                            beta.mean = 0, 
-                            beta.sd = 3,
-                            linear = TRUE) {
-  
-  # This function simulates the Data for a linear or classification model 
-  
-  # Parameters:
-  #     Laenge ...... number of observations in the dataset
-  #     k ........... number of covariates
-  #     X.means ..... mean of the covariates
-  #     X.sd ........ standard deviation of the covariates
-  #     eps.sd ...... mean of the error term
-  #     beta.mean ... mean of the betas
-  #     beta.sd ..... standard deviation of the betas
-  #     linear ...... classification model or linear model (default)
-
-  # Output: list containing:
-  #     [1] ... dataframe with simulated X and y
-  #     [2] ... the actual error term
-  
-
-  X <- numeric(0)                  # X initialisieren
-  for (i in 1:k) {                 # Schleife ueber alle Spalten
-    X <- c(X, rnorm(n = Laenge,    # mittels normalverteilung
-                    X.means[i], 
-                    X.sd[i]))
-  }
-  
-  data <- matrix(X, 
-                 nrow = Laenge,
-                 byrow = FALSE)             # Spaltenweise befuellen
-  
-  
-  # simulate the error term
-  eps <- rnorm(Laenge, 1, 0.75)
-  
-  # simulate beta
-  beta <- rnorm(n = k+1, 
-                mean = beta.mean, 
-                sd = beta.sd)
-  
-  # simulate Y
-  data <- as.data.frame(cbind(
-    cbind(rep(1, times = Laenge), data) %*% beta + eps, data))
-
-  
-  colnames(data) <- c("y", paste0("x", seq(1:k)))   # Spalten benennen
-  
-  
-  if (!linear) {
-  
-    # If y is bigger than the mean of y: 1, else 0
-    data$y <- as.numeric(mean(data$y) > data$y)
-    
-  }
-  
-  return(list(data, eps))
-}
-
 
 bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
   
@@ -216,7 +153,86 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
 
 
 # -----------------------------------------------------------------------------
-# Simulation
+# Simulation of the data
+# -----------------------------------------------------------------------------
+
+
+
+simulation <- function(k, n, linear = TRUE) {
+  
+  # This function simulates the Data for a linear regression model or a binary 
+  # classification model 
+  
+  # Parameters:
+  # k ... number of covariables
+  # n ... number of observations
+  # linear ... linear regression model or binary classification model
+  
+  # Output:
+  # data set with columns y, x_1, ... x_k
+  
+  
+  
+  ### simulate X and beta step by step
+  # X_1
+  i <- 1
+  Xname <- paste0("x", i)
+  def <- defData(varname = Xname, 
+                 dist = "normal", 
+                 formula = 0, 
+                 variance = 1) 
+  # beta_1
+  beta <- rnorm(n = 1, mean = 5, sd = 20)
+  # update the formula
+  formula <- paste("1 +", beta, "*", Xname)
+  
+  
+  for (i in 2:k) {
+    # name of the coulum
+    Xname <- paste0("x", i)
+    
+    # X_i
+    def <- defData(def, 
+                   varname = Xname, 
+                   dist = "normal", 
+                   formula = 0, 
+                   variance = 1) 
+    # beta_i
+    beta <- rnorm(n = 1, mean = 5, sd = 20)
+    
+    # update the formula
+    formula <- paste(formula, "+", beta, "*", Xname)
+    
+  }
+  
+  if (linear) {
+    
+    # generate Y according to the formula
+    def <- defData(def, 
+                   varname = "y", 
+                   dist = "normal", 
+                   formula = formula, 
+                   variance = 1)
+  } else {
+    
+    # generate a binary Y according to the formula
+    def <- defData(def, 
+                   varname = "y", 
+                   dist = "binary",
+                   formula = formula, 
+                   variance = 1,
+                   link = "logit")
+  }
+  
+  data <- genData(n, def)   # generate the data
+  data$id <- NULL           # delete id colum
+  return(data)              # return the dataset
+}
+
+
+
+# -----------------------------------------------------------------------------
+# Simulation study
 # -----------------------------------------------------------------------------
 
 # fix a seed
@@ -224,20 +240,24 @@ seed <- 1234
 
 # sample size
 # it valid to have a small sample size
-n.size <- seq(100, 120)
+n.size <- seq(20, 200, by = 10)
 
 # number of covaraites
-k <- 10
+k <- 4
 
 # Bootstrap and Cross Validation are fit repeatedly to to calculate 
 # the mean and variance of the methods
 howoften <- 30
 
+# for the plots
+lwd <- 2
+
 ###############################################################################
-### linear model
+### Linear model
 ###############################################################################
 
 {
+  
 # initiate vectors to save the values later
 # mean
 m.BE1 <- numeric(0)
@@ -270,7 +290,8 @@ simsi <- simulation(max(n.size), k = k)
 for (num in n.size) {
   
   # for every sample size enlarge the data set 
-  simsala <- list(simsi[[1]][1:num,], simsi[[2]][1:num])
+  # simsala <- list(simsi[[1]][1:num,], simsi[[2]][1:num])
+  simsala <- simsi[1:num,]
   
   # initiate vectors to save the values later
   BE1 <- numeric(0)
@@ -283,27 +304,27 @@ for (num in n.size) {
   ### use every method to calculate the prediction error -howoften- times
   time1 <- c(time1, system.time(
   for (o in 1:howoften) {
-    BE1 <- c(BE1, bootstrapPE(simsala[[1]], estimator = 1))
+    BE1 <- c(BE1, bootstrapPE(simsala, estimator = 1))
   }
   ) [1] / howoften) # find out how long -howoften- calculations of the 
                     # prediction error take and devide by howoften
   
   time2 <- c(time2, system.time(
   for (o in 1:howoften) {
-    BE2 <- c(BE2, bootstrapPE(simsala[[1]], estimator = 2))
+    BE2 <- c(BE2, bootstrapPE(simsala, estimator = 2))
   }
   ) [1] / howoften)
   
   time3 <- c(time3, system.time(
   for (o in 1:howoften) {
-    BE3 <- c(BE3, bootstrapPE(simsala[[1]], estimator = 3))
+    BE3 <- c(BE3, bootstrapPE(simsala, estimator = 3))
   }
   ) [1] / howoften)
   
   time4 <- c(time4, system.time(
   for (o in 1:howoften) {
     
-    lm1 <- lm(y ~., data = simsala[[1]])
+    lm1 <- lm(y ~., data = simsala)
     CV10 <- c(CV10, cv(lm1)$`CV crit`[[1]])  # cv(), 10-fold is default
   }
   ) [1] / howoften)
@@ -311,17 +332,17 @@ for (num in n.size) {
   time5 <- c(time5, system.time(
   for (o in 1:howoften) {
     
-    lm1 <- lm(y ~., data = simsala[[1]])
+    lm1 <- lm(y ~., data = simsala)
     CVn <- c(CVn, cv(lm1, k = "loo")$`CV crit`[[1]]) # "loo" for k = n
   }
   ) [1] / howoften)
   
   # the actual prediction error
-  time6 <- c(time6, system.time(
-    for (o in 1:howoften) {
-      actual <- c(actual, mean(simsala[[2]]^2))
-    }
-  ) [1] / howoften)
+  #time6 <- c(time6, system.time(
+  #  for (o in 1:howoften) {
+  #    actual <- c(actual, mean(simsala[[2]]^2))
+  #  }
+  #) [1] / howoften)
   
   ### mean and variance of each method
   m.BE1 <- c(m.BE1, mean(BE1))
@@ -329,14 +350,14 @@ for (num in n.size) {
   m.BE3 <- c(m.BE3, mean(BE3))
   m.CV10 <- c(m.CV10, mean(CV10))
   m.CVn <- c(m.CVn, mean(CVn))
-  m.actual <- c(m.actual, mean(actual))
+  #m.actual <- c(m.actual, mean(actual))
   
   v.BE1 <- c(v.BE1, var(BE1))
   v.BE2 <- c(v.BE2, var(BE2))
   v.BE3 <- c(v.BE3, var(BE3))
   v.CV10 <- c(v.CV10, var(CV10))
   v.CVn <- c(v.CVn, var(CVn))
-  v.actual <- c(v.actual, var(actual))
+  #v.actual <- c(v.actual, var(actual))
 
 }
 
@@ -355,7 +376,7 @@ limits.time <- c(min(time1, time2, time3, time4, time5, time6),
 lwd <- 2
 
 # mean
-plot(n.size, m.actual, type = "l", 
+plot(n.size, m.BE1, type = "n", 
      main = "", 
      col = "black", 
      lwd = lwd, 
@@ -368,7 +389,7 @@ lines(n.size, m.CV10, col = "firebrick", lwd = lwd)
 lines(n.size, m.CVn, col = "darkred", lwd = lwd, lty = 2)
 
 # varianve
-plot(n.size, v.actual, type = "l", 
+plot(n.size, v.BE1, type = "n", 
      main = "", 
      col = "black", 
      lwd = lwd, 
@@ -382,7 +403,7 @@ lines(n.size, v.CVn, col = "darkred", lwd = lwd, lty = 2)
 
 
 # CPU time
-plot(n.size, time6, type = "l", 
+plot(n.size, time1, type = "n", 
      main = "", 
      col = "black", 
      lwd = lwd, 
@@ -401,14 +422,12 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
 
 
 ###############################################################################
-### Classification
+### Classification model
 ###############################################################################
 
 # to calculate the total prediction error in a 0,1 classification 
 # is equivalent to the mse
-
-
-
+# code is very similar to the regression model
 
 
 {
@@ -419,67 +438,62 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
   m.CV10 <- numeric(0)
   m.CVn <- numeric(0)
   m.actual <- numeric(0)
-  
   # Variance
   v.BE1 <- numeric(0)
   v.BE2 <- numeric(0)
   v.BE3 <- numeric(0)
   v.CV10 <- numeric(0)
   v.CVn <- numeric(0)
-  v.actual <- numeric(0)
-  
-  
   # measure the time
   time1 <- numeric(0)
   time2 <- numeric(0)
   time3 <- numeric(0)
   time4 <- numeric(0)
   time5 <- numeric(0)
-  time6 <- numeric(0)
-  
-  
-  
-  
-  
+
   set.seed(seed)
   simsi <- simulation(max(n.size), k = k, linear = FALSE)
   
   for (num in n.size) {
     
     # have nested models
-    simsala <- list(simsi[[1]][1:num,], simsi[[2]][1:num])
+    simsala <- simsi[1:num,]
     
     # apply bootstrap and CV to each simulation
     BE1 <- numeric(0)
     BE2 <- numeric(0)
     BE3 <- numeric(0)
-    actual <- numeric(0)
     CV10 <- numeric(0)
     CVn <- numeric(0)
+    actual <- numeric(0)
     
     
     time1 <- c(time1, system.time(
       for (o in 1:howoften) {
-        BE1 <- c(BE1, bootstrapPE(simsala[[1]], estimator = 1, linear = FALSE))
+        BE1 <- c(BE1, bootstrapPE(simsala, estimator = 1, 
+                                  linear = FALSE)) # classification model
       }
     ) [1])
     
     time2 <- c(time2, system.time(
       for (o in 1:howoften) {
-        BE2 <- c(BE2, bootstrapPE(simsala[[1]], estimator = 2, linear = FALSE))
+        BE2 <- c(BE2, bootstrapPE(simsala, estimator = 2, 
+                                  linear = FALSE))
       }
     ) [1])
     
     time3 <- c(time3, system.time(
       for (o in 1:howoften) {
-        BE3 <- c(BE3, bootstrapPE(simsala[[1]], estimator = 3, linear = FALSE))
+        BE3 <- c(BE3, bootstrapPE(simsala, estimator = 3, 
+                                  linear = FALSE))
       }
     ) [1])
     
     time4 <- c(time4, system.time(
       for (o in 1:howoften) {
         
-        logit <- glm(y ~., family = "binomial", data = set)
+        # logistic regression model
+        logit <- glm(y ~., family = "binomial", data = simsala) 
         CV10 <- c(CV10, cv(logit)$`CV crit`[[1]])  
       }
     ) [1])
@@ -487,16 +501,17 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
     time5 <- c(time5, system.time(
       for (o in 1:howoften) {
         
-        logit <- glm(y ~., family = "binomial", data = set)
+        # logistic regression model
+        logit <- glm(y ~., family = "binomial", data = simsala)
         CVn <- c(CVn, cv(logit, k = "loo")$`CV crit`[[1]])
       }
     ) [1])
     
-    time6 <- c(time6, system.time(
-      for (o in 1:howoften) {
-        actual <- c(actual, mean(simsala[[2]]^2))
-      }
-    ) [1])
+    #time6 <- c(time6, system.time(
+    #  for (o in 1:howoften) {
+    #    actual <- c(actual, mean(simsala[[2]]^2))
+    #  }
+    #) [1])
     
     
     m.BE1 <- c(m.BE1, mean(BE1))
@@ -511,9 +526,7 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
     v.BE3 <- c(v.BE3, var(BE3))
     v.CV10 <- c(v.CV10, var(CV10))
     v.CVn <- c(v.CVn, var(CVn))
-    v.actual <- c(v.actual, var(actual))
-    
-    
+
   }
   
   
@@ -523,15 +536,14 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
   
   limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual), 
                 max(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual))
-  limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn, v.actual), 
-                max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn, v.actual))
+  limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn), 
+                max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn))
   
-  limits.time <- c(min(time1, time2, time3, time4, time5, time6), 
-                   max(time1, time2, time3, time4, time5, time6))
+  limits.time <- c(min(time1, time2, time3, time4, time5), 
+                   max(time1, time2, time3, time4, time5))
   
-  lwd <- 2
   
-  plot(n.size, m.actual, type = "l", 
+  plot(n.size, m.BE1, type = "l", 
        main = "", 
        col = "black", 
        lwd = lwd, 
@@ -544,22 +556,22 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
   lines(n.size, m.CVn, col = "darkred", lwd = lwd, lty = 2)
   
   
-  plot(n.size, sqrt(v.actual), type = "l", 
+  plot(n.size, v.BE1, type = "n", 
        main = "", 
        col = "black", 
        lwd = lwd, 
        ylim = limits.v,
        xlab = "sample size", ylab = "Variance of the prediction error")
-  lines(n.size, sqrt(v.BE1), col = "lightgreen", lwd = lwd)
-  lines(n.size, sqrt(v.BE2), col = "seagreen", lwd = lwd, lty = 2)
-  lines(n.size, sqrt(v.BE3), col = "darkgreen", lwd = lwd, lty = 3)
-  lines(n.size, sqrt(v.CV10), col = "firebrick", lwd = lwd)
-  lines(n.size, sqrt(v.CVn), col = "darkred", lwd = lwd, lty = 2)
+  lines(n.size, v.BE1, col = "lightgreen", lwd = lwd)
+  lines(n.size, v.BE2, col = "seagreen", lwd = lwd, lty = 2)
+  lines(n.size, v.BE3, col = "darkgreen", lwd = lwd, lty = 3)
+  lines(n.size, v.CV10, col = "firebrick", lwd = lwd)
+  lines(n.size, v.CVn, col = "darkred", lwd = lwd, lty = 2)
   
   
   
   
-  plot(n.size, time6, type = "l", 
+  plot(n.size, time1, type = "n", 
        main = "", 
        col = "black", 
        lwd = lwd, 
@@ -576,45 +588,6 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
 }
 
 
-
-
-
-
-
-
-###########
-### Cross-Validation
-##########
-
-
-
-# first fit a linear model
-lm1 <- lm(y ~., data = simsi)
-
-# Function uses MSE per default
-
-# 10 fold
-cross.valid <- cv(lm1)
-summary(cross.valid)
-cross.valid$`CV crit`[[1]]
-
-plot(cross.valid)
-plot(cross.valid, what = "coefficients")
-
-# LOOCV
-cross.valid <- cv(lm1, k = "loo")
-summary(cross.valid)
-
-# noch schauen, was das macht:
-# ev. gegen Bias
-cross.valid <- cv(lm1, method = "Woodbury")
-summary(cross.valid)
-cross.valid <- cv(lm1, method = "naive")
-summary(cross.valid)
-
-
-# mehere Egebnisse speichern, später schauen, wie das geht
-as.data.frame(cross.valid)
 
 
 
