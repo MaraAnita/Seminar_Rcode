@@ -164,16 +164,21 @@ simulation <- function(k, n, linear = TRUE) {
   # classification model 
   
   # Parameters:
-  # k ... number of covariables
-  # n ... number of observations
-  # linear ... linear regression model or binary classification model
+  #    k ... number of covariables
+  #    n ... number of observations
+  #    linear ... linear regression model or binary classification model
   
   # Output:
-  # data set with columns y, x_1, ... x_k
+  # data set with columns y, x_1, ... x_k, pred
+  #  pred ... the true prediction X*beta
   
   
   
   ### simulate X and beta step by step
+  
+  # beta_0
+  beta <- rnorm(n = 1, mean = 5, sd = 20)
+  
   # X_1
   i <- 1
   Xname <- paste0("x", i)
@@ -182,10 +187,7 @@ simulation <- function(k, n, linear = TRUE) {
                  formula = 0, 
                  variance = 1) 
   # beta_1
-  beta <- rnorm(n = 1, mean = 5, sd = 20)
-  # update the formula
-  formula <- paste("1 +", beta, "*", Xname)
-  
+  beta <- c(beta, rnorm(n = 1, mean = 5, sd = 20))
   
   for (i in 2:k) {
     # name of the coulum
@@ -198,12 +200,13 @@ simulation <- function(k, n, linear = TRUE) {
                    formula = 0, 
                    variance = 1) 
     # beta_i
-    beta <- rnorm(n = 1, mean = 5, sd = 20)
-    
-    # update the formula
-    formula <- paste(formula, "+", beta, "*", Xname)
+    beta <- c(beta, rnorm(n = 1, mean = 5, sd = 20))
     
   }
+  
+  
+  # create the formula
+  formula <- paste(beta, "*", c("1", Xname), collapse = " + ")
   
   if (linear) {
     
@@ -224,12 +227,23 @@ simulation <- function(k, n, linear = TRUE) {
                    link = "logit")
   }
   
+  
+  
   data <- genData(n, def)   # generate the data
-  data$id <- NULL           # delete id colum
+  
+  # calculate the actual prediction error
+  X <- data   # safe data separately
+  X$id <- 1   # create intercept
+  X$y <- NULL # delete the y 
+  
+  # calculate the actual prediction
+  data$pred <- as.matrix(X) %*% beta
+  
+  data$id <- NULL           # delete id column
   return(data)              # return the dataset
 }
 
-
+simulation(4, 20)
 
 # -----------------------------------------------------------------------------
 # Simulation study
@@ -240,7 +254,8 @@ seed <- 1234
 
 # sample size
 # it valid to have a small sample size
-n.size <- seq(20, 200, by = 10)
+#n.size <- seq(20, 100, by = 5)
+n.size <- c(30, 40)
 
 # number of covaraites
 k <- 4
@@ -259,27 +274,26 @@ lwd <- 2
 {
   
 # initiate vectors to save the values later
+# actual prediction error
+actual <- numeric(0)
 # mean
 m.BE1 <- numeric(0)
 m.BE2 <- numeric(0)
 m.BE3 <- numeric(0)
 m.CV10 <- numeric(0)
 m.CVn <- numeric(0)
-m.actual <- numeric(0)
 # Variance
 v.BE1 <- numeric(0)
 v.BE2 <- numeric(0)
 v.BE3 <- numeric(0)
 v.CV10 <- numeric(0)
 v.CVn <- numeric(0)
-v.actual <- numeric(0)
 # measure the time
 time1 <- numeric(0)
 time2 <- numeric(0)
 time3 <- numeric(0)
 time4 <- numeric(0)
 time5 <- numeric(0)
-time6 <- numeric(0)
 
 # set the seed
 set.seed(seed)
@@ -288,10 +302,12 @@ simsi <- simulation(max(n.size), k = k)
 
 # for different sample sizes
 for (num in n.size) {
-  
+  num <- 40
   # for every sample size enlarge the data set 
   # simsala <- list(simsi[[1]][1:num,], simsi[[2]][1:num])
   simsala <- simsi[1:num,]
+  pred <- simsala$pred  # safe the actual prediction seperately
+  simsala$pred <- NULL  # delete from the dataframe
   
   # initiate vectors to save the values later
   BE1 <- numeric(0)
@@ -299,8 +315,7 @@ for (num in n.size) {
   BE3 <- numeric(0)
   CV10 <- numeric(0)
   CVn <- numeric(0)
-  actual <- numeric(0)
-  
+
   ### use every method to calculate the prediction error -howoften- times
   time1 <- c(time1, system.time(
   for (o in 1:howoften) {
@@ -337,12 +352,9 @@ for (num in n.size) {
   }
   ) [1] / howoften)
   
+  
   # the actual prediction error
-  #time6 <- c(time6, system.time(
-  #  for (o in 1:howoften) {
-  #    actual <- c(actual, mean(simsala[[2]]^2))
-  #  }
-  #) [1] / howoften)
+  actual <- c(actual, mse(simsala$y, pred))
   
   ### mean and variance of each method
   m.BE1 <- c(m.BE1, mean(BE1))
@@ -357,8 +369,6 @@ for (num in n.size) {
   v.BE3 <- c(v.BE3, var(BE3))
   v.CV10 <- c(v.CV10, var(CV10))
   v.CVn <- c(v.CVn, var(CVn))
-  #v.actual <- c(v.actual, var(actual))
-
 }
 
 
@@ -366,17 +376,17 @@ for (num in n.size) {
 ### plot the results
 
 # delimiters of the plot windows
-limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual), 
-              max(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual))
-limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn, v.actual), 
-            max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn, v.actual))
-limits.time <- c(min(time1, time2, time3, time4, time5, time6), 
-              max(time1, time2, time3, time4, time5, time6))
+limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, actual), 
+              max(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, actual))
+limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn), 
+            max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn))
+limits.time <- c(min(time1, time2, time3, time4, time5), 
+              max(time1, time2, time3, time4, time5))
 # 
 lwd <- 2
 
 # mean
-plot(n.size, m.BE1, type = "n", 
+plot(n.size, actual, type = "l", 
      main = "", 
      col = "black", 
      lwd = lwd, 
@@ -507,11 +517,13 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
       }
     ) [1])
     
-    #time6 <- c(time6, system.time(
-    #  for (o in 1:howoften) {
-    #    actual <- c(actual, mean(simsala[[2]]^2))
-    #  }
-    #) [1])
+   
+    # the actual prediction error
+    for (o in 1:howoften) {
+      
+        actual <- c(actual, mean(simsala[[2]]^2))
+    }
+    
     
     
     m.BE1 <- c(m.BE1, mean(BE1))
@@ -534,8 +546,8 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
   ### plot
   n.size <- n.size[1:length(m.BE1)]
   
-  limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual), 
-                max(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual))
+  limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn), 
+                max(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn))
   limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn), 
                 max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn))
   
@@ -568,17 +580,12 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
   lines(n.size, v.CV10, col = "firebrick", lwd = lwd)
   lines(n.size, v.CVn, col = "darkred", lwd = lwd, lty = 2)
   
-  
-  
-  
   plot(n.size, time1, type = "n", 
        main = "", 
        col = "black", 
        lwd = lwd, 
        ylim = limits.time,
-       xlab = "sample size", ylab = paste("CPU time of the method", 
-                                          howoften, 
-                                          "times in seconds"))
+       xlab = "sample size", ylab = "CPU time of the method times in seconds")
   lines(n.size, time1, col = "lightgreen", lwd = lwd)
   lines(n.size, time2, col = "seagreen", lwd = lwd, lty = 2)
   lines(n.size, time3, col = "darkgreen", lwd = lwd, tlty = 3)
