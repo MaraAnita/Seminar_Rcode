@@ -1,3 +1,22 @@
+
+### CV auf total classificaton error ändern!!!
+
+simsi <- simulation(3, 20, linear = FALSE)
+simsala <- simsi
+simsala$pred <- NULL
+
+logit <- glm(y ~., family = "binomial", data = simsala)
+CV10 <- c(CV10, cv(logit)$`CV crit`[[1]])  # cv(), 10-fold is default
+
+
+
+
+
+
+
+
+
+
 simulation <- function(Laenge, k, 
                        X.means = rep(1, length = k), 
                        X.sd =  rep(1, length = k), 
@@ -103,7 +122,40 @@ as.data.frame(cross.valid)
 ######
 
 
-paste(c("h", "i"))#, c("a", "b"))
+paste(c("h", "i"),"*", c("a", "b"), collapse = " + ")#
+print(c("h", "i"))
+??join()
+
+?cat()
+
+
+?predict()
+
+
+
+data <- simulation(3, 20)
+
+
+library(simstudy)
+
+# Step 1: Define covariates
+def <- defData(varname = "X1", dist = "normal", formula = 0, variance = 1)
+def <- defData(def, varname = "X2", dist = "normal", formula = 0, variance = 1)
+
+# Step 2: Define outcome with known coefficients and variance (error)
+#def <- defData(def, varname = "Y", dist = "normal", 
+#               formula = "2 + 1.5 * X1 - 2 * X2", variance = 1)
+
+# Step 3: Generate data
+set.seed(123)
+data <- genData(10, def)
+data$id <- 1
+
+beta <- c(2, 1.5, -2)
+as.matrix(data) %*% beta
+
+
+data[, Y_hat_true := 2 + 1.5 * X1 - 2 * X2]  # true prediction
 
 
 
@@ -111,6 +163,9 @@ paste(c("h", "i"))#, c("a", "b"))
 
 
 
+
+true_mse <- mean((data$Y_hat_true - data$Y)^2)
+print(paste("True prediction error (MSE):", round(true_mse, 4)))
 
 
 

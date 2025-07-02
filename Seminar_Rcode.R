@@ -17,6 +17,8 @@ library(simstudy)
 # -----------------------------------------------------------------------------
 # Self-written Functions
 # -----------------------------------------------------------------------------
+class.err <- function(y, yhat) sum(y != yhat)
+
 
 bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
   
@@ -109,13 +111,13 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
       preds <- ifelse(predict(logit, newdata = set, type = "response") < 0.5, 
                       0, 1)
       BSsample <- c(BSsample, 
-                    sum(preds == set$y))
+                    class.err(preds, set$y))
       
       # original sample error
       preds <- ifelse(predict(logit, newdata = data, type = "response") < 0.5, 
                       0, 1)
       originalsample <- c(originalsample, 
-                          sum(preds == data$y))
+                          class.err(preds, data$y))
       
       
     }
@@ -228,8 +230,6 @@ simulation <- function(k, n, linear = TRUE) {
                    link = "logit")
   }
   
-  
-  
   data <- genData(n, def)   # generate the data
   
   # calculate the actual prediction error
@@ -237,22 +237,23 @@ simulation <- function(k, n, linear = TRUE) {
   X$id <- 1   # create intercept
   X$y <- NULL # delete the y 
   
-  # calculate the actual prediction
+  # calculate the true prediction
   pred <- as.matrix(X) %*% beta
   
-  # in a classification model it is 1 or 0
+  # in a classification model, the target variable Y is binary
   if (!linear) {
+    # use the logit link function
     pred <- round(1 / (1 + exp(-pred))) # round due to numerical error
   }
   
-  data$pred <- pred         # save the predicted value in the dataframe
+  data$pred <- pred         # save the predicted value in the data frame
   data$id <- NULL           # delete id column
-  return(data)              # return the dataset
+  return(data)              # return the data set
 }
 
-sim <- simulation(1, 200, linear = FALSE)
+sim <- simulation(30, 200, linear = FALSE)
 sim
-mse(sim$pred, sim$y)
+class.err(sim$pred, sim$y)
 # -----------------------------------------------------------------------------
 # Simulation study
 # -----------------------------------------------------------------------------
@@ -402,7 +403,7 @@ plot(n.size, actual, type = "l",
 lines(n.size, m.BE1, col = "lightgreen", lwd = lwd)
 lines(n.size, m.BE2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, m.BE3, col = "darkgreen", lwd = lwd, lty = 3)
-lines(n.size, m.CV10, col = "firebrick", lwd = lwd)
+lines(n.size, m.CV10, col = "red", lwd = lwd)
 lines(n.size, m.CVn, col = "darkred", lwd = lwd, lty = 2)
 
 # varianve
@@ -415,7 +416,7 @@ plot(n.size, v.BE1, type = "n",
 lines(n.size, v.BE1, col = "lightgreen", lwd = lwd)
 lines(n.size, v.BE2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, v.BE3, col = "darkgreen", lwd = lwd, lty = 3)
-lines(n.size, v.CV10, col = "firebrick", lwd = lwd)
+lines(n.size, v.CV10, col = "red", lwd = lwd)
 lines(n.size, v.CVn, col = "darkred", lwd = lwd, lty = 2)
 
 
@@ -429,7 +430,7 @@ plot(n.size, time1, type = "n",
 lines(n.size, time1, col = "lightgreen", lwd = lwd)
 lines(n.size, time2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)
-lines(n.size, time4, col = "firebrick", lwd = lwd)
+lines(n.size, time4, col = "red", lwd = lwd)
 lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
 
 }
@@ -441,10 +442,6 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
 ###############################################################################
 ### Classification model
 ###############################################################################
-
-# to calculate the total prediction error in a 0,1 classification 
-# is equivalent to the mse
-# code is very similar to the regression model
 
 
 {
@@ -519,7 +516,7 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
         
         # logistic regression model
         logit <- glm(y ~., family = "binomial", data = simsala)
-        CV10 <- c(CV10, cv(logit)$`CV crit`[[1]])  # cv(), 10-fold is default
+        CV10 <- c(CV10, cv(logit, criterion = class.err)$`CV crit`[[1]])  # cv(), 10-fold is default
       }
     ) [1] / howoften)
     
@@ -527,13 +524,13 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
       for (o in 1:howoften) {
         # logistic regression model
         logit <- glm(y ~., family = "binomial", data = simsala)
-        CVn <- c(CVn, cv(logit, k = "loo")$`CV crit`[[1]]) # "loo" for k = n
+        CVn <- c(CVn, cv(logit, criterion = class.err, k = "loo")$`CV crit`[[1]]) # "loo" for k = n
       }
     ) [1] / howoften)
     
     
-    # the actual prediction error
-    actual <- c(actual, mse(simsala$y, pred))
+    # the actual classification error
+    actual <- c(actual, class.err(simsala$y, pred))
     
     ### mean and variance of each method
     m.BE1 <- c(m.BE1, mean(BE1))
@@ -561,8 +558,6 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
                 max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn))
   limits.time <- c(min(time1, time2, time3, time4, time5), 
                    max(time1, time2, time3, time4, time5))
-  # 
-  lwd <- 2
   
   # mean
   plot(n.size, actual, type = "l", 
@@ -574,34 +569,32 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
   lines(n.size, m.BE1, col = "lightgreen", lwd = lwd)
   lines(n.size, m.BE2, col = "seagreen", lwd = lwd, lty = 2)
   lines(n.size, m.BE3, col = "darkgreen", lwd = lwd, lty = 3)
-  lines(n.size, m.CV10, col = "firebrick", lwd = lwd)
+  lines(n.size, m.CV10, col = "red", lwd = lwd)
   lines(n.size, m.CVn, col = "darkred", lwd = lwd, lty = 2)
   
   # varianve
   plot(n.size, v.BE1, type = "n", 
        main = "", 
-       col = "black", 
        lwd = lwd, 
        ylim = limits.v,
        xlab = "sample size", ylab = "Variance of the prediction error")
   lines(n.size, v.BE1, col = "lightgreen", lwd = lwd)
   lines(n.size, v.BE2, col = "seagreen", lwd = lwd, lty = 2)
   lines(n.size, v.BE3, col = "darkgreen", lwd = lwd, lty = 3)
-  lines(n.size, v.CV10, col = "firebrick", lwd = lwd)
+  lines(n.size, v.CV10, col = "red", lwd = lwd)
   lines(n.size, v.CVn, col = "darkred", lwd = lwd, lty = 2)
   
   
   # CPU time
   plot(n.size, time1, type = "n", 
        main = "", 
-       col = "black", 
        lwd = lwd, 
        ylim = limits.time,
        xlab = "sample size", ylab = "CPU time of the method times in seconds")
   lines(n.size, time1, col = "lightgreen", lwd = lwd)
   lines(n.size, time2, col = "seagreen", lwd = lwd, lty = 2)
   lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)
-  lines(n.size, time4, col = "firebrick", lwd = lwd)
+  lines(n.size, time4, col = "red", lwd = lwd)
   lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
   
 }
