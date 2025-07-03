@@ -11,12 +11,14 @@ rm(list = ls())
 # Load necessary packages
 library("Metrics")
 library("cv")
-library(simstudy)
-
+library("simstudy")
+library("caret")
 
 # -----------------------------------------------------------------------------
 # Self-written Functions
 # -----------------------------------------------------------------------------
+
+# Function to calculate the classification error
 class.err <- function(y, yhat) sum(y != yhat)
 
 
@@ -158,9 +160,11 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
 # Simulation of the data
 # -----------------------------------------------------------------------------
 
+# Function to simulate a beta
+trueBeta <- function(k, mean = 0, sd = 1) rnorm(k + 1, mean = mean, sd = sd)
 
 
-simulation <- function(k, n, linear = TRUE) {
+simulation <- function(k, n, beta, linear = TRUE) {
   
   # This function simulates the Data for a linear regression model or a binary 
   # classification model 
@@ -169,6 +173,7 @@ simulation <- function(k, n, linear = TRUE) {
   #    k ... number of covariables
   #    n ... number of observations
   #    linear ... linear regression model or binary classification model
+  #    beta ... the true beta
   
   # Output:
   # data set with columns y, x_1, ... x_k, pred
@@ -177,9 +182,6 @@ simulation <- function(k, n, linear = TRUE) {
   
   ### simulate X and beta step by step
   
-  # beta_0
-  beta <- rnorm(n = 1, mean = 5, sd = 20)
-  
   # X_1
   i <- 1
   Xname <- paste0("x", i)
@@ -187,9 +189,7 @@ simulation <- function(k, n, linear = TRUE) {
                  dist = "normal", 
                  formula = 0, 
                  variance = 1) 
-  # beta_1
-  beta <- c(beta, rnorm(n = 1, mean = 5, sd = 20))
-  
+
   # if k > 1 generate more columns
   if (k > 1) {
     for (i in 2:k) {
@@ -202,9 +202,7 @@ simulation <- function(k, n, linear = TRUE) {
                      dist = "normal", 
                      formula = 0, 
                      variance = 1) 
-      # beta_i
-      beta <- c(beta, rnorm(n = 1, mean = 5, sd = 20))
-      
+
     }
   }
   
@@ -218,7 +216,7 @@ simulation <- function(k, n, linear = TRUE) {
                    varname = "y", 
                    dist = "normal", 
                    formula = formula, 
-                   variance = 10)
+                   variance = 1)
   } else {
     
     # generate a binary Y according to the formula
@@ -226,7 +224,7 @@ simulation <- function(k, n, linear = TRUE) {
                    varname = "y", 
                    dist = "binary",
                    formula = formula, 
-                   variance = 10,
+                   variance = 100000,
                    link = "logit")
   }
   
@@ -251,9 +249,13 @@ simulation <- function(k, n, linear = TRUE) {
   return(data)              # return the data set
 }
 
-sim <- simulation(30, 200, linear = FALSE)
-sim
-class.err(sim$pred, sim$y)
+
+
+beta <- trueBeta(3)
+sim <- simulation(3, 30, beta)
+
+mse(sim$pred, sim$y)
+
 # -----------------------------------------------------------------------------
 # Simulation study
 # -----------------------------------------------------------------------------
@@ -263,18 +265,18 @@ seed <- 1234
 
 # sample size
 # it valid to have a small sample size
-#n.size <- seq(20, 100, by = 5)
-n.size <- c(200, 400)
+n.size <- seq(20, 100, by = 1)
+#n.size <- c(20, 40)
 
 # number of covaraites
-k <- 1
+k <- 3
 
 # Bootstrap and Cross Validation are fit repeatedly to to calculate 
 # the mean and variance of the methods
 howoften <- 30
 
 # for the plots
-lwd <- 2
+lwd <- 1
 
 ###############################################################################
 ### Linear model
@@ -306,8 +308,11 @@ time5 <- numeric(0)
 
 # set the seed
 set.seed(seed)
+
+# simulate the beta
+beta <- trueBeta(k)
 # simulate the data
-simsi <- simulation(max(n.size), k = k)
+simsi <- simulation(max(n.size), k = k, beta = beta)
 
 # for different sample sizes
 for (num in n.size) {
@@ -361,8 +366,15 @@ for (num in n.size) {
   ) [1] / howoften)
   
   
-  # the actual prediction error
-  actual <- c(actual, mse(simsala$y, pred))
+  ### approximate the prediction error using more data
+  # first fit the linear model
+  lm1 <- lm(y ~., data = simsala)
+  # prediction error on a much larger sample
+  simLarge <- simulation(num * 6, k = k, beta = beta)
+  actual <- c(actual, mse(predict.lm(lm1, simLarge), simLarge$y)) 
+  
+  
+  
   
   ### mean and variance of each method
   m.BE1 <- c(m.BE1, mean(BE1))
@@ -426,7 +438,7 @@ plot(n.size, time1, type = "n",
      col = "black", 
      lwd = lwd, 
      ylim = limits.time,
-     xlab = "sample size", ylab = "CPU time of the method times in seconds")
+     xlab = "sample size", ylab = "CPU time of the methods in seconds")
 lines(n.size, time1, col = "lightgreen", lwd = lwd)
 lines(n.size, time2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)
@@ -470,8 +482,10 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
   
   # set the seed
   set.seed(seed)
+  # simulate the beta
+  beta <- trueBeta(k)
   # simulate the data
-  simsi <- simulation(max(n.size), k = k, linear = FALSE)
+  simsi <- simulation(max(n.size), k = k, beta = beta, linear = FALSE)
   
   # for different sample sizes
   for (num in n.size) {
@@ -529,8 +543,12 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
     ) [1] / howoften)
     
     
-    # the actual classification error
-    actual <- c(actual, class.err(simsala$y, pred))
+    ### approximate the prediction error using more data
+    # first fit the linear model
+    lm1 <- lm(y ~., data = simsala)
+    # prediction error on a much larger sample
+    simLarge <- simulation(num * 6, k = k, beta = beta)
+    actual <- c(actual, class.err(predict.lm(lm1, simLarge), simLarge$y)/6) 
     
     ### mean and variance of each method
     m.BE1 <- c(m.BE1, mean(BE1))
@@ -565,19 +583,19 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
        col = "black", 
        lwd = lwd, 
        ylim = limits.m,
-       xlab = "sample size", ylab = "Mean of the prediction error")
+       xlab = "sample size", ylab = "Mean of the total classification error")
   lines(n.size, m.BE1, col = "lightgreen", lwd = lwd)
   lines(n.size, m.BE2, col = "seagreen", lwd = lwd, lty = 2)
   lines(n.size, m.BE3, col = "darkgreen", lwd = lwd, lty = 3)
   lines(n.size, m.CV10, col = "red", lwd = lwd)
   lines(n.size, m.CVn, col = "darkred", lwd = lwd, lty = 2)
   
-  # varianve
+  # variance
   plot(n.size, v.BE1, type = "n", 
        main = "", 
        lwd = lwd, 
        ylim = limits.v,
-       xlab = "sample size", ylab = "Variance of the prediction error")
+       xlab = "sample size", ylab = "Variance of the total classification error")
   lines(n.size, v.BE1, col = "lightgreen", lwd = lwd)
   lines(n.size, v.BE2, col = "seagreen", lwd = lwd, lty = 2)
   lines(n.size, v.BE3, col = "darkgreen", lwd = lwd, lty = 3)
@@ -590,7 +608,7 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
        main = "", 
        lwd = lwd, 
        ylim = limits.time,
-       xlab = "sample size", ylab = "CPU time of the method times in seconds")
+       xlab = "sample size", ylab = "CPU time of the methods in seconds")
   lines(n.size, time1, col = "lightgreen", lwd = lwd)
   lines(n.size, time2, col = "seagreen", lwd = lwd, lty = 2)
   lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)

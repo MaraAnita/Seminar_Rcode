@@ -1,21 +1,70 @@
 
-### CV auf total classificaton error ändern!!!
+library(caret)
+install.packages("caret")
 
-simsi <- simulation(3, 20, linear = FALSE)
+
+
+trainControl()
+train()
+resamples()
+
+
+
+sim_data <- twoClassSim(n = 100, linearVars = 2)
+sim_data$Class
+
+
+?twoClassSim
+
+
+
+LPH07_1(100, class = TRUE)
+
+SLC14_1(100, linearVars = 3)
+
+
+?metrics
+LPH07_2
+
+caret:::twoClassSim
+
+twoClassSim
+
+
+ls("package:caret", pattern = "Sim")
+
+
+###########
+
+sim <- simulation(4, 30, linear = FALSE)
+sim
+class.err(sim$pred, sim$y)
+
+
+#### CV auf total classification error ändern!!!
+
+simsi <- simulation(3, 2000000, linear = FALSE)
 simsala <- simsi
 simsala$pred <- NULL
 
-logit <- glm(y ~., family = "binomial", data = simsala)
+install.packages("brglm2")
+library("brglm2")
+
+
+logit <- glm(y ~., family = "binomial", data = simsala, , method = "brglmFit")
 CV10 <- c(CV10, cv(logit)$`CV crit`[[1]])  # cv(), 10-fold is default
 
 
+cv <- cv(logit, criterion = class.err)
+cv$details
+cv
+
+?cv()
 
 
+class.err(1, 0)
 
-
-
-
-
+###############
 
 simulation <- function(Laenge, k, 
                        X.means = rep(1, length = k), 
