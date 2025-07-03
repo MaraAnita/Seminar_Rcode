@@ -13,6 +13,8 @@ library("Metrics")
 library("cv")
 library("simstudy")
 library("caret")
+library("pingers")
+
 
 # -----------------------------------------------------------------------------
 # Self-written Functions
@@ -332,6 +334,7 @@ for (num in n.size) {
   ### use every method to calculate the prediction error -howoften- times
   time1 <- c(time1, system.time(
   for (o in 1:howoften) {
+    simsala <- shuffle(simsala)
     BE1 <- c(BE1, bootstrapPE(simsala, estimator = 1))
   }
   ) [1] / howoften) # find out how long -howoften- calculations of the 
@@ -339,19 +342,21 @@ for (num in n.size) {
   
   time2 <- c(time2, system.time(
   for (o in 1:howoften) {
+    simsala <- shuffle(simsala)
     BE2 <- c(BE2, bootstrapPE(simsala, estimator = 2))
   }
   ) [1] / howoften)
   
   time3 <- c(time3, system.time(
   for (o in 1:howoften) {
+    simsala <- shuffle(simsala)
     BE3 <- c(BE3, bootstrapPE(simsala, estimator = 3))
   }
   ) [1] / howoften)
   
   time4 <- c(time4, system.time(
   for (o in 1:howoften) {
-    
+    simsala <- shuffle(simsala)
     lm1 <- lm(y ~., data = simsala)
     CV10 <- c(CV10, cv(lm1)$`CV crit`[[1]])  # cv(), 10-fold is default
   }
@@ -359,7 +364,7 @@ for (num in n.size) {
   
   time5 <- c(time5, system.time(
   for (o in 1:howoften) {
-    
+    simsala <- shuffle(simsala)
     lm1 <- lm(y ~., data = simsala)
     CVn <- c(CVn, cv(lm1, k = "loo")$`CV crit`[[1]]) # "loo" for k = n
   }
@@ -372,9 +377,6 @@ for (num in n.size) {
   # prediction error on a much larger sample
   simLarge <- simulation(num * 6, k = k, beta = beta)
   actual <- c(actual, mse(predict.lm(lm1, simLarge), simLarge$y)) 
-  
-  
-  
   
   ### mean and variance of each method
   m.BE1 <- c(m.BE1, mean(BE1))
@@ -391,8 +393,6 @@ for (num in n.size) {
   v.CVn <- c(v.CVn, var(CVn))
 }
 
-
-
 ### plot the results
 
 # delimiters of the plot windows
@@ -402,8 +402,6 @@ limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn),
             max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn))
 limits.time <- c(min(time1, time2, time3, time4, time5), 
               max(time1, time2, time3, time4, time5))
-# 
-lwd <- 2
 
 # mean
 plot(n.size, actual, type = "l", 
@@ -418,7 +416,7 @@ lines(n.size, m.BE3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, m.CV10, col = "red", lwd = lwd)
 lines(n.size, m.CVn, col = "darkred", lwd = lwd, lty = 2)
 
-# varianve
+# variance
 plot(n.size, v.BE1, type = "n", 
      main = "", 
      col = "black", 
@@ -430,7 +428,6 @@ lines(n.size, v.BE2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, v.BE3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, v.CV10, col = "red", lwd = lwd)
 lines(n.size, v.CVn, col = "darkred", lwd = lwd, lty = 2)
-
 
 # CPU time
 plot(n.size, time1, type = "n", 
@@ -505,6 +502,7 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
     ### use every method to calculate the prediction error -howoften- times
     time1 <- c(time1, system.time(
       for (o in 1:howoften) {
+        simsala <- shuffle(simsala)
         BE1 <- c(BE1, bootstrapPE(simsala, estimator = 1, 
                                   linear = FALSE))
       }
@@ -513,6 +511,7 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
     
     time2 <- c(time2, system.time(
       for (o in 1:howoften) {
+        simsala <- shuffle(simsala)
         BE2 <- c(BE2, bootstrapPE(simsala, estimator = 2, 
                                   linear = FALSE))
       }
@@ -520,6 +519,7 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
     
     time3 <- c(time3, system.time(
       for (o in 1:howoften) {
+        simsala <- shuffle(simsala)
         BE3 <- c(BE3, bootstrapPE(simsala, estimator = 3, 
                                   linear = FALSE))
       }
@@ -527,7 +527,7 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
     
     time4 <- c(time4, system.time(
       for (o in 1:howoften) {
-        
+        simsala <- shuffle(simsala)
         # logistic regression model
         logit <- glm(y ~., family = "binomial", data = simsala)
         CV10 <- c(CV10, cv(logit, criterion = class.err)$`CV crit`[[1]])  # cv(), 10-fold is default
@@ -536,6 +536,7 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
     
     time5 <- c(time5, system.time(
       for (o in 1:howoften) {
+        simsala <- shuffle(simsala)
         # logistic regression model
         logit <- glm(y ~., family = "binomial", data = simsala)
         CVn <- c(CVn, cv(logit, criterion = class.err, k = "loo")$`CV crit`[[1]]) # "loo" for k = n
@@ -556,8 +557,6 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
     m.BE3 <- c(m.BE3, mean(BE3))
     m.CV10 <- c(m.CV10, mean(CV10))
     m.CVn <- c(m.CVn, mean(CVn))
-    #m.actual <- c(m.actual, mean(actual))
-    
     v.BE1 <- c(v.BE1, var(BE1))
     v.BE2 <- c(v.BE2, var(BE2))
     v.BE3 <- c(v.BE3, var(BE3))
@@ -578,11 +577,8 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
                    max(time1, time2, time3, time4, time5))
   
   # mean
-  plot(n.size, actual, type = "l", 
-       main = "", 
-       col = "black", 
-       lwd = lwd, 
-       ylim = limits.m,
+  plot(n.size, actual, col = "black", 
+       main = "", lwd = lwd, type = "l", ylim = limits.m,
        xlab = "sample size", ylab = "Mean of the total classification error")
   lines(n.size, m.BE1, col = "lightgreen", lwd = lwd)
   lines(n.size, m.BE2, col = "seagreen", lwd = lwd, lty = 2)
@@ -591,25 +587,18 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
   lines(n.size, m.CVn, col = "darkred", lwd = lwd, lty = 2)
   
   # variance
-  plot(n.size, v.BE1, type = "n", 
-       main = "", 
-       lwd = lwd, 
-       ylim = limits.v,
+  plot(n.size, v.BE1, col = "lightgreen",
+       main = "", lwd = lwd, type = "l", ylim = limits.v,
        xlab = "sample size", ylab = "Variance of the total classification error")
-  lines(n.size, v.BE1, col = "lightgreen", lwd = lwd)
   lines(n.size, v.BE2, col = "seagreen", lwd = lwd, lty = 2)
   lines(n.size, v.BE3, col = "darkgreen", lwd = lwd, lty = 3)
   lines(n.size, v.CV10, col = "red", lwd = lwd)
   lines(n.size, v.CVn, col = "darkred", lwd = lwd, lty = 2)
   
-  
   # CPU time
-  plot(n.size, time1, type = "n", 
-       main = "", 
-       lwd = lwd, 
-       ylim = limits.time,
+  plot(n.size, time1, col = "lightgreen",
+       main = "", lwd = lwd, type = "l", ylim = limits.time,
        xlab = "sample size", ylab = "CPU time of the methods in seconds")
-  lines(n.size, time1, col = "lightgreen", lwd = lwd)
   lines(n.size, time2, col = "seagreen", lwd = lwd, lty = 2)
   lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)
   lines(n.size, time4, col = "red", lwd = lwd)

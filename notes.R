@@ -1,8 +1,8 @@
 
-library(caret)
-install.packages("caret")
+install.packages("pingers")
 
 
+citation("caret")
 
 trainControl()
 train()
@@ -12,7 +12,12 @@ resamples()
 
 sim_data <- twoClassSim(n = 100, linearVars = 2)
 sim_data$Class
+plot(sim_data)
 
+sim_data <- twoClassSim(n = 100, linearVars = 2)
+logit <- glm(Class ~., family = "binomial", data = sim_data)
+
+shuffle(sim_data)
 
 ?twoClassSim
 
