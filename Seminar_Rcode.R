@@ -420,7 +420,7 @@ lines(n.size, m.BE3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, m.CV10, col = "red", lwd = lwd)
 lines(n.size, m.CVn, col = "darkred", lwd = lwd, lty = 2)
 
-legend("topright", legend = c("more data", 
+legend("topright", legend = c("additional test data", 
                             "in-sample error rate", 
                             "refined bootsrap estimator", 
                             "0.632 bootsrap estimator", 
@@ -500,6 +500,7 @@ m.BE2 <- numeric(0)
 m.BE3 <- numeric(0)
 m.CV10 <- numeric(0)
 m.CVn <- numeric(0)
+m.actual <- numeric(0)
 # Variance
 v.BE1 <- numeric(0)
 v.BE2 <- numeric(0)
@@ -543,7 +544,8 @@ for (num in n.size) {
     for (o in 1:howoften) {
       # simulate the data
       simsala <- simulation(num, k = k, beta = beta, linear = FALSE)        
-      BE2 <- c(BE2, bootstrapPE(simsala, estimator = 2, 
+      BE2 <- c(BE2, bootstrapPE(simsala, 
+                                estimator = 2, 
                                 linear = FALSE))
     }
   ) [1] / howoften)
@@ -552,7 +554,8 @@ for (num in n.size) {
     for (o in 1:howoften) {
       # simulate the data
       simsala <- simulation(num, k = k, beta = beta, linear = FALSE)        
-      BE3 <- c(BE3, bootstrapPE(simsala, estimator = 3, 
+      BE3 <- c(BE3, bootstrapPE(simsala, 
+                                estimator = 3, 
                                 linear = FALSE))
     }
   ) [1] / howoften)
@@ -563,7 +566,9 @@ for (num in n.size) {
       simsala <- simulation(num, k = k, beta = beta, linear = FALSE)        
       # logistic regression model
       logit <- glm(y ~., family = "binomial", data = simsala)
-      CV10 <- c(CV10, cv(logit, criterion = class.err)$`CV crit`[[1]])  # cv(), 10-fold is default
+      CV10 <- c(CV10, 
+                cv(logit, 
+                   criterion = class.err)$`CV crit`[[1]])  # cv(), 10-fold is default
     }
   ) [1] / howoften)
   
@@ -573,48 +578,25 @@ for (num in n.size) {
       simsala <- simulation(num, k = k, beta = beta, linear = FALSE)        
       # logistic regression model
       logit <- glm(y ~., family = "binomial", data = simsala)
-      CVn <- c(CVn, cv(logit, criterion = class.err, k = "loo")$`CV crit`[[1]]) # "loo" for k = n
+      CVn <- c(CVn, 
+               cv(logit, 
+                  criterion = class.err, 
+                  k = "loo")$`CV crit`[[1]]) # "loo" for k = n
     }
   ) [1] / howoften)
-  
-  
-  ### approximate the prediction error using more data
-  # first fit the linear model
-  lm1 <- lm(y ~., data = simsala)
-  # prediction error on a much larger sample
-  simLarge <- simulation(num * 6, k = k, beta = beta)
-  actual <- c(actual, class.err(predict.lm(lm1, simLarge), simLarge$y)/6) 
-  
-  
-  
   
   ### approximate the prediction error using more data
   simLarge <- simulation(num * 6, k = k, beta = beta)
   set.seed(seed)
+  
   for (o in 1:howoften) {
     # simulate the data
     simsala <- simulation(num, k = k, beta = beta)
     # logistic regression model
     logit <- glm(y ~., family = "binomial", data = simsala)
-    
-    
-    
-    
-    # first fit the linear model
-    lm1 <- lm(y ~., data = simsala)
     # prediction error on a much larger sample
-    actual <- c(actual, mse(predict.lm(lm1, simLarge), simLarge$y)) 
+    actual <- c(actual, class.err(predict(logit, simLarge), simLarge$y) / 6) 
   } 
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   
   ### mean and variance of each method
   m.BE1 <- c(m.BE1, mean(BE1))
@@ -622,6 +604,7 @@ for (num in n.size) {
   m.BE3 <- c(m.BE3, mean(BE3))
   m.CV10 <- c(m.CV10, mean(CV10))
   m.CVn <- c(m.CVn, mean(CVn))
+  m.actual <- c(m.actual, mean(actual))
   v.BE1 <- c(v.BE1, var(BE1))
   v.BE2 <- c(v.BE2, var(BE2))
   v.BE3 <- c(v.BE3, var(BE3))
@@ -634,41 +617,85 @@ for (num in n.size) {
 ### plot the results
 
 # delimiters of the plot windows
-limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, actual), 
-              max(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, actual))
+limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual), 
+              max(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual))
 limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn), 
               max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn))
 limits.time <- c(min(time1, time2, time3, time4, time5), 
                  max(time1, time2, time3, time4, time5))
-
 # mean
-plot(n.size, actual, col = "black", 
-     main = "", lwd = lwd, type = "l", ylim = limits.m,
-     xlab = "sample size", ylab = "Mean of the total classification error")
+plot(n.size, m.actual, type = "l", 
+     main = "", 
+     col = "black", 
+     lwd = lwd, 
+     ylim = limits.m,
+     xlab = "sample size", 
+     ylab = "Mean of the predicted total classification error")
 lines(n.size, m.BE1, col = "lightgreen", lwd = lwd)
 lines(n.size, m.BE2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, m.BE3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, m.CV10, col = "red", lwd = lwd)
 lines(n.size, m.CVn, col = "darkred", lwd = lwd, lty = 2)
 
+legend("topright", legend = c("additional test data", 
+                              "in-sample error rate", 
+                              "refined bootsrap estimator", 
+                              "0.632 bootsrap estimator", 
+                              "10-fold cross-validation", 
+                              "n-fold cross-validation"),
+       lty = c(1, 1, 2, 3, 1, 2), bty = "n", 
+       col = c("black", "lightgreen", "seagreen", 
+               "darkgreen", "red", "darkred"), 
+       lwd = lwd, 
+       bg = "n")
+
 # variance
-plot(n.size, v.BE1, col = "lightgreen",
-     main = "", lwd = lwd, type = "l", ylim = limits.v,
-     xlab = "sample size", ylab = "Variance of the total classification error")
+plot(n.size, v.BE1, type = "l", 
+     main = "", 
+     col = "lightgreen", 
+     lwd = lwd, 
+     ylim = limits.v,
+     xlab = "sample size", 
+     ylab = "Variance of the predicted total classification error")
 lines(n.size, v.BE2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, v.BE3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, v.CV10, col = "red", lwd = lwd)
 lines(n.size, v.CVn, col = "darkred", lwd = lwd, lty = 2)
 
+legend("topright", legend = c("in-sample error rate", 
+                              "refined bootsrap estimator", 
+                              "0.632 bootsrap estimator", 
+                              "10-fold cross-validation", 
+                              "n-fold cross-validation"),
+       lty = c(1, 2, 3, 1, 2), bty = "n", 
+       col = c("lightgreen", "seagreen", 
+               "darkgreen", "red", "darkred"),
+       lwd = lwd, 
+       bg = "n")
+
 # CPU time
-plot(n.size, time1, col = "lightgreen",
-     main = "", lwd = lwd, type = "l", ylim = limits.time,
+plot(n.size, time1, type = "l", 
+     main = "", 
+     col = "lightgreen", 
+     lwd = lwd, 
+     ylim = limits.time,
      xlab = "sample size", ylab = "CPU time of the methods in seconds")
 lines(n.size, time2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, time4, col = "red", lwd = lwd)
 lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
 
+legend("topright", legend = c("in-sample error rate", 
+                              "refined bootsrap estimator", 
+                              "0.632 bootsrap estimator", 
+                              "10-fold cross-validation", 
+                              "n-fold cross-validation"),
+       lty = c(1, 2, 3, 1, 2), 
+       bty = "n", 
+       col = c("lightgreen", "seagreen", 
+               "darkgreen", "red", "darkred"), 
+       lwd = lwd, 
+       bg = "n")
 }
 
 
