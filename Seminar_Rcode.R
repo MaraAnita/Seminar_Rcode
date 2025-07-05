@@ -14,6 +14,7 @@ library("cv")
 library("simstudy")
 library("caret")
 library("pingers")
+library("bootstrap")
 
 
 # -----------------------------------------------------------------------------
@@ -258,6 +259,10 @@ sim <- simulation(3, 30, beta)
 
 mse(sim$pred, sim$y)
 
+
+sim_data <- twoClassSim(n = num, linearVars = 2)
+
+
 # -----------------------------------------------------------------------------
 # Simulation study
 # -----------------------------------------------------------------------------
@@ -278,7 +283,7 @@ k <- 3
 howoften <- 30
 
 # for the plots
-lwd <- 1
+lwd <- 1.8
 
 ###############################################################################
 ### Linear model
@@ -289,6 +294,7 @@ lwd <- 1
 # initiate vectors to save the values later
 # actual prediction error
 actual <- numeric(0)
+m.actual <- numeric(0)
 # mean
 m.BE1 <- numeric(0)
 m.BE2 <- numeric(0)
@@ -313,8 +319,7 @@ set.seed(seed)
 
 # simulate the beta
 beta <- trueBeta(k)
-# simulate the data
-simsi <- simulation(max(n.size), k = k, beta = beta)
+
 
 # for different sample sizes
 for (num in n.size) {
@@ -332,59 +337,86 @@ for (num in n.size) {
   CVn <- numeric(0)
 
   ### use every method to calculate the prediction error -howoften- times
+  # always set the same seed before
+  set.seed(seed)
+
   time1 <- c(time1, system.time(
   for (o in 1:howoften) {
-    simsala <- shuffle(simsala)
+    # simulate the data
+    simsala <- simulation(num, k = k, beta = beta)
+    # estimate the prediction error
     BE1 <- c(BE1, bootstrapPE(simsala, estimator = 1))
   }
   ) [1] / howoften) # find out how long -howoften- calculations of the 
                     # prediction error take and devide by howoften
   
+  # always set the same seed before
+  set.seed(seed)
+  
   time2 <- c(time2, system.time(
   for (o in 1:howoften) {
-    simsala <- shuffle(simsala)
+    # simulate the data
+    simsala <- simulation(num, k = k, beta = beta)
     BE2 <- c(BE2, bootstrapPE(simsala, estimator = 2))
   }
   ) [1] / howoften)
   
+  
+  # always set the same seed before
+  set.seed(seed)
+  
   time3 <- c(time3, system.time(
   for (o in 1:howoften) {
-    simsala <- shuffle(simsala)
+    # simulate the data
+    simsala <- simulation(num, k = k, beta = beta)
     BE3 <- c(BE3, bootstrapPE(simsala, estimator = 3))
   }
   ) [1] / howoften)
   
-  time4 <- c(time4, system.time(
-  for (o in 1:howoften) {
-    simsala <- shuffle(simsala)
-    lm1 <- lm(y ~., data = simsala)
-    CV10 <- c(CV10, cv(lm1)$`CV crit`[[1]])  # cv(), 10-fold is default
-  }
-  ) [1] / howoften)
   
-  time5 <- c(time5, system.time(
-  for (o in 1:howoften) {
-    simsala <- shuffle(simsala)
-    lm1 <- lm(y ~., data = simsala)
-    CVn <- c(CVn, cv(lm1, k = "loo")$`CV crit`[[1]]) # "loo" for k = n
-  }
-  ) [1] / howoften)
+  # always set the same seed before
+  set.seed(seed)
+  
+  #time4 <- c(time4, system.time(
+  #for (o in 1:howoften) {
+    # simulate the data
+  #  simsala <- simulation(num, k = k, beta = beta)
+  #  lm1 <- lm(y ~., data = simsala)
+  #  CV10 <- c(CV10, cv(lm1)$`CV crit`[[1]])  # cv(), 10-fold is default
+  #}
+  #) [1] / howoften)
+  
+  # always set the same seed before
+  set.seed(seed)
+  
+  #time5 <- c(time5, system.time(
+  #for (o in 1:howoften) {
+    # simulate the data
+  #  simsala <- simulation(num, k = k, beta = beta)
+  #  lm1 <- lm(y ~., data = simsala)
+  #  CVn <- c(CVn, cv(lm1, k = "loo")$`CV crit`[[1]]) # "loo" for k = n
+  #}
+  #) [1] / howoften)
   
   
   ### approximate the prediction error using more data
-  # first fit the linear model
-  lm1 <- lm(y ~., data = simsala)
-  # prediction error on a much larger sample
   simLarge <- simulation(num * 6, k = k, beta = beta)
-  actual <- c(actual, mse(predict.lm(lm1, simLarge), simLarge$y)) 
-  
+  set.seed(seed)
+  for (o in 1:howoften) {
+    # simulate the data
+    simsala <- simulation(num, k = k, beta = beta)
+    # first fit the linear model
+    lm1 <- lm(y ~., data = simsala)
+    # prediction error on a much larger sample
+    actual <- c(actual, mse(predict.lm(lm1, simLarge), simLarge$y)) 
+  }  
   ### mean and variance of each method
   m.BE1 <- c(m.BE1, mean(BE1))
   m.BE2 <- c(m.BE2, mean(BE2))
   m.BE3 <- c(m.BE3, mean(BE3))
   m.CV10 <- c(m.CV10, mean(CV10))
   m.CVn <- c(m.CVn, mean(CVn))
-  #m.actual <- c(m.actual, mean(actual))
+  m.actual <- c(m.actual, mean(actual))
   
   v.BE1 <- c(v.BE1, var(BE1))
   v.BE2 <- c(v.BE2, var(BE2))
@@ -396,15 +428,22 @@ for (num in n.size) {
 ### plot the results
 
 # delimiters of the plot windows
-limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, actual), 
-              max(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, actual))
-limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn), 
-            max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn))
-limits.time <- c(min(time1, time2, time3, time4, time5), 
-              max(time1, time2, time3, time4, time5))
+limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.actual), 
+              max(m.BE1, m.BE2, m.BE3, m.actual))
+limits.v <- c(min(v.BE1, v.BE2, v.BE3), 
+            max(v.BE1, v.BE2, v.BE3))
+limits.time <- c(min(time1, time2, time3), 
+              max(time1, time2, time3))
 
+
+limits.m <- c(min(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual), 
+              max(m.BE1, m.BE2, m.BE3, m.CV10, m.CVn, m.actual))
+limits.v <- c(min(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn), 
+              max(v.BE1, v.BE2, v.BE3, v.CV10, v.CVn))
+limits.time <- c(min(time1, time2, time3, time4, time5), 
+                 max(time1, time2, time3, time4, time5))
 # mean
-plot(n.size, actual, type = "l", 
+plot(n.size, m.actual, type = "l", 
      main = "", 
      col = "black", 
      lwd = lwd, 
@@ -482,7 +521,10 @@ lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
   # simulate the beta
   beta <- trueBeta(k)
   # simulate the data
-  simsi <- simulation(max(n.size), k = k, beta = beta, linear = FALSE)
+  #simsi <- simulation(max(n.size), k = k, beta = beta, linear = FALSE) ##############
+  simsi <- twoClassSim(n = max(n.size), linearVars = 2)
+  simsi$y <- as.numeric(simsi$Class) - 1 # die Kassen 0-1 machen
+  simsi$Class <- NULL
   
   # for different sample sizes
   for (num in n.size) {

@@ -9,13 +9,18 @@ train()
 resamples()
 
 
+{
+sim_data <- twoClassSim(n = 20, linearVars = 0)
+#names(sim_data)[names(sim_data)=="Class"] <- "y"
+logit <- glm(Class ~., family = "binomial", data = sim_data)
+}
 
-sim_data <- twoClassSim(n = 100, linearVars = 2)
-sim_data$Class
+?twoClassSim
+
+
 plot(sim_data)
 
 sim_data2 <- twoClassSim(n = 100, linearVars = 2)
-logit <- glm(Class ~., family = "binomial", data = sim_data)
 
 shuffle(sim_data)
 
@@ -37,6 +42,16 @@ twoClassSim
 
 
 ls("package:caret", pattern = "Sim")
+
+
+
+library("bootstrap")
+?bootpred
+
+
+
+
+
 
 
 ###########
