@@ -102,14 +102,13 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
       # fit a liner model to the bootstrap sample
       lmod <- lm(y ~., data = set)
 
-      # original-sample prediction error
-      originalsample <- c(originalsample, 
-                          mse(predict.lm(lmod, data), data$y)) 
-      
-      
+
       # which estimator should be used?
       if (estimator == 1) {
         
+        # original-sample prediction error
+        originalsample <- c(originalsample, 
+                            mse(predict.lm(lmod, data), data$y)) 
         ### The 1st approach
         est.pred.err <- mean(originalsample)
         
@@ -117,10 +116,14 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
         
         if (estimator == 2) {
           ### The 2nd approach
+          # original-sample prediction error
+          originalsample <- c(originalsample, 
+                              mse(predict.lm(lmod, data), data$y)) 
           # compute the in-sample prediction error
           BSsample <- c(BSsample, 
                         mse(predict.lm(lmod, set), set$y))
           
+          # estimator
           est.pred.err <- mean(originalsample) + 
             mean(originalsample) - 
             mean(BSsample)
@@ -136,7 +139,7 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
           BSsample <- c(BSsample, 
                         mse(predict.lm(lmod, set), set$y))
           # estimator
-          est.pred.err <- mean(originalsample) + 
+          est.pred.err <- mean(BSsample) + 
             0.632 * (mean(notinsample) - mean(BSsample))
           
         }
@@ -148,16 +151,13 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
       # logistic regression
       logit <- glm(y ~., family = "binomial", data = set)
       
-      # original sample error
-      preds <- ifelse(predict(logit, newdata = data, type = "response") < 0.5, 
-                      0, 1)
-      originalsample <- c(originalsample, 
-                          class.err(preds, data$y))
-      
-      
       # which estimator should be used?
       if (estimator == 1) {
-        
+        # original sample error
+        preds <- ifelse(predict(logit, newdata = data, type = "response") < 0.5, 
+                        0, 1)
+        originalsample <- c(originalsample, 
+                            class.err(preds, data$y))
         ### The 1st approach
         est.pred.err <- mean(originalsample)
         
@@ -165,6 +165,13 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
         
         if (estimator == 2) {
           ### The 2nd approach
+          
+          # original sample error
+          preds <- ifelse(predict(logit, newdata = data, type = "response") < 0.5, 
+                          0, 1)
+          originalsample <- c(originalsample, 
+                              class.err(preds, data$y))
+          
           # in-sample prediction error
           preds <- ifelse(predict(logit, 
                                   newdata = set, 
@@ -194,7 +201,7 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
                         class.err(preds, set$y))
           
           # estimator
-          est.pred.err <- mean(originalsample) + 
+          est.pred.err <- mean(BSsample) + 
             0.632 * (mean(notinsample) - mean(BSsample))
         }
       }
@@ -300,7 +307,7 @@ seed <- 1234
 # sample size
 # it valid to have a small sample size
 n.size <- seq(30, 100, by = 1)
-#n.size <- c(30, 40)
+n.size <- c(30, 40)
 
 
 # number of covaraites
