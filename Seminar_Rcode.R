@@ -132,7 +132,10 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
           # not in bootstrap sample prediction error
           notinsample <- c(notinsample, 
                            mse(predict.lm(lmod, notset), notset$y)) 
-          
+          # compute the in-sample prediction error
+          BSsample <- c(BSsample, 
+                        mse(predict.lm(lmod, set), set$y))
+          # estimator
           est.pred.err <- mean(originalsample) + 
             0.632 * (mean(notinsample) - mean(BSsample))
           
@@ -183,6 +186,14 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
                                   type = "response") < 0.5, 0, 1)
           notinsample <- c(notinsample, class.err(preds, notset$y))
         
+          # in-sample prediction error
+          preds <- ifelse(predict(logit, 
+                                  newdata = set, 
+                                  type = "response") < 0.5, 0, 1)
+          BSsample <- c(BSsample, 
+                        class.err(preds, set$y))
+          
+          # estimator
           est.pred.err <- mean(originalsample) + 
             0.632 * (mean(notinsample) - mean(BSsample))
         }
@@ -202,8 +213,8 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
 # Simulation of the data
 # -----------------------------------------------------------------------------
 
-# Function to simulate a beta
 trueBeta <- function(k, mean = 0, sd = 1) rnorm(k + 1, mean = mean, sd = sd)
+# Function to simulate a normally distributed beta for a model with intercept
 
 
 simulation <- function(k, n, beta, linear = TRUE) {
@@ -634,6 +645,7 @@ for (num in n.size) {
     simsala <- simulation(num, k = k, beta = beta)
     # logistic regression model
     logit <- glm(y ~., family = "binomial", data = simsala)
+    
     # prediction error on a much larger sample
     actual <- c(actual, class.err(predict(logit, simLarge), simLarge$y) / 6) 
   } 
