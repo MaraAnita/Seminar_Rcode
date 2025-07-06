@@ -589,7 +589,7 @@ for (num in n.size) {
                                 linear = FALSE))
     }
   ) [1] / howoften) # find out how long -howoften- calculations of the 
-  # prediction error take and devide by howoften
+  # prediction error take and divide by howoften
   
   time2 <- c(time2, system.time(
     for (o in 1:howoften) {
@@ -637,17 +637,21 @@ for (num in n.size) {
   ) [1] / howoften)
   
   ### approximate the prediction error using more data
-  simLarge <- simulation(num * 6, k = k, beta = beta)
+  simLarge <- simulation(num * 6, k = k, beta = beta, linear = FALSE)
   set.seed(seed)
   
   for (o in 1:howoften) {
     # simulate the data
-    simsala <- simulation(num, k = k, beta = beta)
+    simsala <- simulation(num, k = k, beta = beta, linear = FALSE)
     # logistic regression model
     logit <- glm(y ~., family = "binomial", data = simsala)
     
+    # in-sample prediction error
+    preds <- ifelse(predict(logit, newdata = simLarge, 
+                            type = "response") < 0.5, 0, 1)
     # prediction error on a much larger sample
-    actual <- c(actual, class.err(predict(logit, simLarge), simLarge$y) / 6) 
+    actual <- c(actual, class.err(preds, simLarge$y) / 6) # divide by 6 to 
+                                                          # scale correctly 
   } 
   
   ### mean and variance of each method
