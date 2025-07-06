@@ -12,7 +12,6 @@ rm(list = ls())
 library("Metrics")
 library("cv")
 library("simstudy")
-library("caret")
 library("pingers")
 library("bootstrap")
 
@@ -309,8 +308,7 @@ seed <- 1234
 n.size <- seq(30, 100, by = 1)
 n.size <- c(30, 40)
 
-
-# number of covaraites
+# number of explanatory variables
 k <- 3
 
 # Bootstrap and Cross Validation are fit repeatedly to to calculate 
@@ -479,7 +477,7 @@ lines(n.size, m.CV10, col = "red", lwd = lwd)
 lines(n.size, m.CVn, col = "darkred", lwd = lwd, lty = 2)
 
 legend("topright", legend = c("additional test data", 
-                            "in-sample error rate", 
+                              "first approach bootstrap estimator", 
                             "refined bootsrap estimator", 
                             "0.632 bootsrap estimator", 
                             "10-fold cross-validation", 
@@ -502,7 +500,7 @@ lines(n.size, v.BE3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, v.CV10, col = "red", lwd = lwd)
 lines(n.size, v.CVn, col = "darkred", lwd = lwd, lty = 2)
 
-legend("topright", legend = c("in-sample error rate", 
+legend("topright", legend = c("first approach bootstrap estimator", 
                               "refined bootsrap estimator", 
                               "0.632 bootsrap estimator", 
                               "10-fold cross-validation", 
@@ -525,7 +523,7 @@ lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, time4, col = "red", lwd = lwd)
 lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
 
-legend("topright", legend = c("in-sample error rate", 
+legend("topleft", legend = c("first approach bootstrap estimator", 
                               "refined bootsrap estimator", 
                               "0.632 bootsrap estimator", 
                               "10-fold cross-validation", 
@@ -549,7 +547,7 @@ legend("topright", legend = c("in-sample error rate",
 
 {
   
-# initiate vectors to save the values later
+### initiate vectors to save the values later
 # actual prediction error
 actual <- numeric(0)
 # mean
@@ -700,8 +698,8 @@ lines(n.size, m.BE3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, m.CV10, col = "red", lwd = lwd)
 lines(n.size, m.CVn, col = "darkred", lwd = lwd, lty = 2)
 
-legend("topright", legend = c("additional test data", 
-                              "in-sample error rate", 
+legend("topleft", legend = c("additional test data", 
+                              "first approach bootstrap estimator", 
                               "refined bootsrap estimator", 
                               "0.632 bootsrap estimator", 
                               "10-fold cross-validation", 
@@ -725,7 +723,7 @@ lines(n.size, v.BE3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, v.CV10, col = "red", lwd = lwd)
 lines(n.size, v.CVn, col = "darkred", lwd = lwd, lty = 2)
 
-legend("topright", legend = c("in-sample error rate", 
+legend("topleft", legend = c("first approach bootstrap estimator", 
                               "refined bootsrap estimator", 
                               "0.632 bootsrap estimator", 
                               "10-fold cross-validation", 
@@ -748,7 +746,7 @@ lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, time4, col = "red", lwd = lwd)
 lines(n.size, time5, col = "darkred", lwd = lwd, lty = 2)
 
-legend("topright", legend = c("in-sample error rate", 
+legend("topleft", legend = c("first approach bootstrap estimator", 
                               "refined bootsrap estimator", 
                               "0.632 bootsrap estimator", 
                               "10-fold cross-validation", 
