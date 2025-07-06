@@ -536,14 +536,9 @@ legend("topleft", legend = c("first approach bootstrap estimator",
        bg = "n")
 }
 
-
-
-
-
 ###############################################################################
 ### Classification model
 ###############################################################################
-
 
 {
   
@@ -758,7 +753,3 @@ legend("topleft", legend = c("first approach bootstrap estimator",
        lwd = lwd, 
        bg = "n")
 }
-
-
-
-
