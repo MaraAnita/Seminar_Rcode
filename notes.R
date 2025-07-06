@@ -49,8 +49,17 @@ library("bootstrap")
 ?bootpred
 
 
+k <- 3
+num <- 20
+# simulate the beta
+beta <- trueBeta(k)
+sim <- simulation(k, num, beta)
+
+y <- sim$y
+sim$y <- NULL
 
 
+bootpred(sim, y, nboot = 30, theta.fit = fit, theta.predict = predict.lm, err.meas = mse)
 
 
 
