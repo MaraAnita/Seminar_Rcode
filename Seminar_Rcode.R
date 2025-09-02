@@ -24,7 +24,6 @@ library("bootstrap")
 class.err <- function(y, yhat) sum(y != yhat)
 
 
-
 bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
   
   # This function estimates the prediction error of a
@@ -214,7 +213,54 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
 }
 
 
-
+cvLogReg <- function(data, Folds = 10){
+  
+  # This function computes the prediction error a logistic regression model
+  # using cross-validation
+  
+  # variables:
+  #    - data ... the dataset
+  #    - k ...... the number of folds
+  
+  # Output:
+  #    - the total classification error
+  
+  
+  # Part the data roughly into k parts
+  len <- nrow(simsala)
+  
+  s <- rep(1:Folds, each = floor(len/Folds))
+  
+  if (len%%Folds != 0) {
+    s <- as.factor(c(s, 1:(len%%Folds)))
+  }
+  
+  # to save each error
+  err <- numeric(0)
+  
+  # for every fold
+  for (i in 1:Folds){
+    
+    # split into train and test set
+    train <- simsala[!s == i,]
+    test <- simsala[s == i,]
+    
+    # Fit logistic regression model on training data
+    logit <- glm(y ~., family = "binomial", data = train)
+    
+    # Evaluate on the test data
+    preds <- ifelse(predict(logit, 
+                            newdata = test, 
+                            type = "response") < 0.5, 0, 1)
+    
+    # save the classification error
+    err <- c(err, class.err(preds, test$y))
+    
+  }
+  
+  # return the mean of the errors
+  return(mean(err))
+}
 
 
 
@@ -297,8 +343,6 @@ simulation <- function(k, n, beta, linear = TRUE) {
 
 
 
-
-
 # -----------------------------------------------------------------------------
 # Simulation study
 # -----------------------------------------------------------------------------
@@ -309,7 +353,7 @@ seed <- 1234
 # sample size
 # it valid to have a small sample size
 n.size <- seq(30, 100, by = 1)
-n.size <- c(30, 40)
+#n.size <- c(30, 40)
 
 # number of explanatory variables
 k <- 3
@@ -516,11 +560,11 @@ legend("topright", legend = c("first approach bootstrap estimator",
 
 # CPU time
 plot(n.size, time1, type = "l", 
-     main = "", 
+     main = "CPU time of the methods", 
      col = "lightgreen", 
      lwd = lwd, 
      ylim = limits.time,
-     xlab = "sample size", ylab = "CPU time of the methods in seconds")
+     xlab = "sample size", ylab = "seconds")
 lines(n.size, time2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, time4, col = "red", lwd = lwd)
@@ -619,10 +663,8 @@ for (num in n.size) {
       # simulate the data
       simsala <- simulation(num, k = k, beta = beta, linear = FALSE)        
       # logistic regression model
-      logit <- glm(y ~., family = "binomial", data = simsala)
-      CV10 <- c(CV10, 
-                cv(logit, 
-                   criterion = class.err)$`CV crit`[[1]])  # cv(), 10-fold is default
+      CV10 <- c(CV10, cvLogReg(simsala, Folds = 10))
+    
     }
   ) [1] / howoften)
   
@@ -631,11 +673,8 @@ for (num in n.size) {
       # simulate the data
       simsala <- simulation(num, k = k, beta = beta, linear = FALSE)        
       # logistic regression model
-      logit <- glm(y ~., family = "binomial", data = simsala)
-      CVn <- c(CVn, 
-               cv(logit, 
-                  criterion = class.err, 
-                  k = "loo")$`CV crit`[[1]]) # "loo" for k = n
+      CVn <- c(CVn, cvLogReg(simsala, nrow(simsala)))
+
     }
   ) [1] / howoften)
   
@@ -734,11 +773,11 @@ legend("topleft", legend = c("first approach bootstrap estimator",
 
 # CPU time
 plot(n.size, time1, type = "l", 
-     main = "", 
+     main = "CPU time of the methods", 
      col = "lightgreen", 
      lwd = lwd, 
      ylim = limits.time,
-     xlab = "sample size", ylab = "CPU time of the methods in seconds")
+     xlab = "sample size", ylab = "seconds")
 lines(n.size, time2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, time4, col = "red", lwd = lwd)

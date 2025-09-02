@@ -1,27 +1,22 @@
 # simulate the data
+num <- 90
 simsala <- simulation(num, k = k, beta = beta, linear = FALSE)        
 
 Folds <- 9
 
 # Part the data roughly into k parts
 len <- nrow(simsala)
-s <- as.factor(c(rep(1:Folds, each = floor(len/Folds)), 
-                 1:(len%%Folds)))
 
+s <- rep(1:Folds, each = floor(len/Folds))
 
-# split into train and test set
-train <- simsala[!s == 1,]
-test <- simsala[s == 1,]
+if (len%%Folds != 0) {
+  s <- as.factor(c(s, 1:(len%%Folds)))
+}
 
-# Fit logistic regression model on training data
-logit <- glm(y ~., family = "binomial", data = train)
+# to save each error
+err <- numeric(0)
 
-# Evaluate on the remaining data
-predict.glm(logit, data = test)
-
-?predict
-
-# for every part
+# for every fold
 for (i in 1:Folds){
   
   # split into train and test set
@@ -31,57 +26,14 @@ for (i in 1:Folds){
   # Fit logistic regression model on training data
   logit <- glm(y ~., family = "binomial", data = train)
   
-  # Evaluate on the remaining data
+  # Evaluate on the test data
+  preds <- ifelse(predict(logit, 
+                          newdata = test, 
+                          type = "response") < 0.5, 0, 1)
   
-  
+  # save the classification error
+  err <- c(err, class.err(preds, test$y))
   
 }
 
-
-
-
-
-cvLogReg <- function(data, Folds = 10){
-  
-  # This function computes the prediction error a logistic regression model
-  # using cross-validation
-  
-  # variables:
-  #    - data ... the dataset
-  #    - k ...... the number of folds
-  
-  # Output:
-  #    - the prediction error
-  
-  
-  # Part the data roughly into k parts
-  len <- nrow(simsala)
-  s <- as.factor(c(rep(1:Folds, each = floor(len/Folds)), 
-                   1:(len%%Folds)))
-  
-  # for every part
-  for (i in 1:Folds){
-    
-    # split into train and test set
-    train <- simsala[!s == i,]
-    test <- simsala[s == i,]
-    
-    # Fit logistic regression model on training data
-    logit <- glm(y ~., family = "binomial", data = data)
-    
-    # Evaluate on the test data
-    
-    
-    
-  }
-  
-  
-
-  
-  
-  
-  
-  
-  
-  return()
-}
+mean(err)
