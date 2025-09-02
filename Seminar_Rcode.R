@@ -24,6 +24,7 @@ library("bootstrap")
 class.err <- function(y, yhat) sum(y != yhat)
 
 
+
 bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
   
   # This function estimates the prediction error of a
@@ -211,6 +212,8 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
   # Return the estimated prediction error
   return(est.pred.err)
 }
+
+
 
 
 
