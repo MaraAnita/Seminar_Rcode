@@ -80,23 +80,26 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
   # size of original dataset
   n <- nrow(data)
   
-    
-  # initiate a vector for the in-bootstrap-sample prediction error and 
-  # the original-sample prediction prediction error
-  BSsample <- numeric(0)
-  originalsample <- numeric(0)
-  notinsample <- numeric(0)
   
+  # To save the estimate of each sample
+  est.pred.err <- numeric(B)
   
   # loop for each bootstrap sample
   for (i in 1:B) {
     
-    # draw a Bootrap sample of the same size as the original dataset
-    ind <- sample(1:n, size = n, replace = TRUE)
-    set <- data[ind,] # with replacement
+    # initiate a vector for the in-bootstrap-sample prediction error and 
+    # the original-sample prediction prediction error
+    BSsample <- numeric(0)
+    originalsample <- numeric(0)
+    notinsample <- numeric(0)
     
+
     # for linear regression
     if (linear) {
+      
+      # draw a Bootrap sample of the same size as the original dataset
+      ind <- sample(1:n, size = n, replace = TRUE)
+      set <- data[ind,] # with replacement
       
       # fit a liner model to the bootstrap sample
       lmod <- lm(y ~., data = set)
@@ -106,46 +109,49 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
       if (estimator == 1) {
         
         # original-sample prediction error
-        originalsample <- c(originalsample, 
-                            mse(predict.lm(lmod, data), data$y)) 
-        ### The 1st approach
-        est.pred.err <- mean(originalsample)
-        
+        est.pred.err[i] <- mse(predict.lm(lmod, data), data$y) 
+
       } else {
         
         if (estimator == 2) {
           ### The 2nd approach
           # original-sample prediction error
-          originalsample <- c(originalsample, 
-                              mse(predict.lm(lmod, data), data$y)) 
+          originalsample <- mse(predict.lm(lmod, data), data$y)
           # compute the in-sample prediction error
-          BSsample <- c(BSsample, 
-                        mse(predict.lm(lmod, set), set$y))
+          BSsample <- mse(predict.lm(lmod, set), set$y)
           
           # estimator
-          est.pred.err <- mean(originalsample) + 
-            mean(originalsample) - 
-            mean(BSsample)
+          est.pred.err[i] <- 2 * originalsample - BSsample
           
         } else {
           ### 0.632 estimator
           # data not contained in the bootstrap sample
           notset <- data[-unique(ind),]
           # not in bootstrap sample prediction error
-          notinsample <- c(notinsample, 
-                           mse(predict.lm(lmod, notset), notset$y)) 
+          notinsample <- mse(predict.lm(lmod, notset), notset$y)
           # compute the in-sample prediction error
-          BSsample <- c(BSsample, 
-                        mse(predict.lm(lmod, set), set$y))
+          BSsample <- mse(predict.lm(lmod, set), set$y)
           # estimator
-          est.pred.err <- mean(BSsample) + 
-            0.632 * (mean(notinsample) - mean(BSsample))
+          est.pred.err[i] <- 0.368 * BSsample + 0.632 * notinsample
           
         }
       }
       
       # for logistic regression
     } else {
+      
+      # draw balanced sample
+      one <- simsala[simsala$y == 1, ]
+      zero <- simsala[simsala$y == 0, ]
+    
+      ind <- as.numeric(c(sample(rownames(one), 
+                                 size = floor(n/2), 
+                                 replace = TRUE),
+                          sample(rownames(one), 
+                                 size = n - floor(n/2), 
+                                 replace = TRUE)))
+      
+      set <- simsala[ind,]
       
       # logistic regression
       logit <- glm(y ~., family = "binomial", data = set)
@@ -155,10 +161,8 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
         # original sample error
         preds <- ifelse(predict(logit, newdata = data, type = "response") < 0.5, 
                         0, 1)
-        originalsample <- c(originalsample, 
-                            class.err(preds, data$y))
         ### The 1st approach
-        est.pred.err <- mean(originalsample)
+        est.pred.err[i] <- class.err(preds, data$y)
         
       } else {
         
@@ -166,21 +170,17 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
           ### The 2nd approach
           
           # original sample error
-          preds <- ifelse(predict(logit, newdata = data, type = "response") < 0.5, 
+          preds <- ifelse(predict(logit, newdata = data, 
+                                  type = "response") < 0.5, 
                           0, 1)
-          originalsample <- c(originalsample, 
-                              class.err(preds, data$y))
+          originalsample <- class.err(preds, data$y)
           
           # in-sample prediction error
-          preds <- ifelse(predict(logit, 
-                                  newdata = set, 
+          preds <- ifelse(predict(logit, newdata = set, 
                                   type = "response") < 0.5, 0, 1)
-          BSsample <- c(BSsample, 
-                        class.err(preds, set$y))
+          BSsample <- class.err(preds, set$y)
           
-          est.pred.err <- mean(originalsample) + 
-            mean(originalsample) - 
-            mean(BSsample)
+          est.pred.err[i] <- 2 * originalsample - BSsample
           
         } else {
           ### 0.632 estimator
@@ -190,26 +190,25 @@ bootstrapPE <- function(data, B = 30, estimator = 3, linear = TRUE) {
           preds <- ifelse(predict(logit, 
                                   newdata = notset, 
                                   type = "response") < 0.5, 0, 1)
-          notinsample <- c(notinsample, class.err(preds, notset$y))
+          notinsample <- class.err(preds, notset$y)
         
           # in-sample prediction error
           preds <- ifelse(predict(logit, 
                                   newdata = set, 
                                   type = "response") < 0.5, 0, 1)
-          BSsample <- c(BSsample, 
-                        class.err(preds, set$y))
+          BSsample <- class.err(preds, set$y)
           
           # estimator
-          est.pred.err <- mean(BSsample) + 
-            0.632 * (mean(notinsample) - mean(BSsample))
+          est.pred.err[i] <- 0.368 * BSsample + 0.632 * notinsample
         }
       }
     }
   }
   
   
+  
   # Return the estimated prediction error
-  return(est.pred.err)
+  return(mean(est.pred.err))
 }
 
 
@@ -226,11 +225,12 @@ cvLogReg <- function(data, Folds = 10){
   #    - the total classification error
   
   
-  # Part the data roughly into k parts
+  # Part the data roughly into k !balanced! parts
   len <- nrow(simsala)
   
-  s <- rep(1:Folds, each = floor(len/Folds))
-  
+  # which group
+  s <- rep(1:Folds, times = floor(len/Folds))
+  # remaining datapoints t one group
   if (len%%Folds != 0) {
     s <- as.factor(c(s, 1:(len%%Folds)))
   }
@@ -242,7 +242,7 @@ cvLogReg <- function(data, Folds = 10){
   for (i in 1:Folds){
     
     # split into train and test set
-    train <- simsala[!s == i,]
+    train <- simsala[s != i,]
     test <- simsala[s == i,]
     
     # Fit logistic regression model on training data
@@ -287,60 +287,29 @@ simulation <- function(k, n, beta, linear = TRUE) {
   # data set with columns y, x_1, ... x_k, pred
   #  pred ... the true prediction X*beta
   
+  # Intercept and randomly distributed data matrix with mean 0 and sd 1
+  X <- cbind(1, matrix(rnorm(n * k), nrow = n)) 
   
-  ### simulate X and beta step by step
+  # error term, randomly distributed with mean 0 and sd 1
+  epsi <- rnorm(n)
   
-  # X_1
-  i <- 1
-  Xname <- paste0("x", i)
-  def <- defData(varname = Xname, 
-                 dist = "normal", 
-                 formula = 0, 
-                 variance = 1) 
-
-  # if k > 1 generate more columns
-  if (k > 1) {
-    for (i in 2:k) {
-      # name of the coulum
-      Xname <- c(Xname, paste0("x", i))
-      
-      # X_i
-      def <- defData(def, 
-                     varname = Xname[i], 
-                     dist = "normal", 
-                     formula = 0, 
-                     variance = 1) 
-
-    }
+  # y = X * beta + eps
+  y <- X %*% beta + epsi
+  
+  
+  # for binary data
+  if (!linear){
+    probs <- 1 / (1 + exp(-y))
+    y <- rbinom(n, size = 1, prob = probs)
   }
   
-  # create the formula
-  formula <- paste(beta, "*", c("1", Xname), collapse = " + ")
+  # save as dataframe
+  data <- data.frame(cbind(y, X[,-1])) # without intercept
+  colnames(data) <- c("y", paste0("x", 1:k))
   
-  if (linear) {
-    
-    # generate Y according to the formula
-    def <- defData(def, 
-                   varname = "y", 
-                   dist = "normal", 
-                   formula = formula, 
-                   variance = 1)
-  } else {
-    
-    # generate a binary Y according to the formula
-    def <- defData(def, 
-                   varname = "y", 
-                   dist = "binary",
-                   formula = formula, 
-                   variance = 100000,
-                   link = "logit")
-  }
-  
-  data <- genData(n, def)   # generate the data
-  data$id <- NULL           # delete id column
-  return(data)              # return the data set
+  # sort the data
+  return(data[order(data$y),])
 }
-
 
 
 # -----------------------------------------------------------------------------
@@ -353,7 +322,7 @@ seed <- 1234
 # sample size
 # it valid to have a small sample size
 n.size <- seq(30, 100, by = 1)
-#n.size <- c(30, 40)
+#n.size <- c(70, 80)
 
 # number of explanatory variables
 k <- 3
@@ -795,3 +764,4 @@ legend("topleft", legend = c("first approach bootstrap estimator",
        lwd = lwd, 
        bg = "n")
 }
+
