@@ -15,7 +15,6 @@ library("simstudy")
 library("pingers")
 library("bootstrap")
 
-
 # -----------------------------------------------------------------------------
 # Self-written Functions
 # -----------------------------------------------------------------------------
@@ -481,7 +480,7 @@ limits.time <- c(min(time1, time2, time3, time4, time5),
                  max(time1, time2, time3, time4, time5))
 # mean
 plot(n.size, m.actual, type = "l", 
-     main = "", 
+     main = "Linear Regression", 
      col = "black", 
      lwd = lwd, 
      ylim = limits.m,
@@ -506,7 +505,7 @@ legend("topright", legend = c("additional test data",
 
 # variance
 plot(n.size, v.BE1, type = "l", 
-     main = "", 
+     main = "Linear Regression", 
      col = "lightgreen", 
      lwd = lwd, 
      ylim = limits.v,
@@ -529,11 +528,11 @@ legend("topright", legend = c("first approach bootstrap estimator",
 
 # CPU time
 plot(n.size, time1, type = "l", 
-     main = "CPU time of the methods", 
+     main = "Linear Regression", 
      col = "lightgreen", 
      lwd = lwd, 
      ylim = limits.time,
-     xlab = "sample size", ylab = "seconds")
+     xlab = "sample size", ylab = "CPU time of the methods in seconds")
 lines(n.size, time2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, time4, col = "red", lwd = lwd)
@@ -585,6 +584,8 @@ time5 <- numeric(0)
 set.seed(seed)
 # simulate the beta
 beta <- trueBeta(k)
+beta[1] <- 0.01
+
 
 # for different sample sizes
 for (num in n.size) {
@@ -692,7 +693,7 @@ limits.time <- c(min(time1, time2, time3, time4, time5),
                  max(time1, time2, time3, time4, time5))
 # mean
 plot(n.size, m.actual, type = "l", 
-     main = "", 
+     main = "Logistic Regression", 
      col = "black", 
      lwd = lwd, 
      ylim = limits.m,
@@ -718,7 +719,7 @@ legend("topleft", legend = c("additional test data",
 
 # variance
 plot(n.size, v.BE1, type = "l", 
-     main = "", 
+     main = "Logistic Regression", 
      col = "lightgreen", 
      lwd = lwd, 
      ylim = limits.v,
@@ -742,11 +743,11 @@ legend("topleft", legend = c("first approach bootstrap estimator",
 
 # CPU time
 plot(n.size, time1, type = "l", 
-     main = "CPU time of the methods", 
+     main = "Logistic Regression", 
      col = "lightgreen", 
      lwd = lwd, 
      ylim = limits.time,
-     xlab = "sample size", ylab = "seconds")
+     xlab = "sample size", ylab = "CPU time of the methods in seconds")
 lines(n.size, time2, col = "seagreen", lwd = lwd, lty = 2)
 lines(n.size, time3, col = "darkgreen", lwd = lwd, lty = 3)
 lines(n.size, time4, col = "red", lwd = lwd)
@@ -765,3 +766,30 @@ legend("topleft", legend = c("first approach bootstrap estimator",
        bg = "n")
 }
 
+
+
+
+
+# ------------------------------------------------------------------------------
+# Grafik for 0.632 estimator
+# ------------------------------------------------------------------------------
+
+# create function 
+pe <- function(N) 1-((N-1)/N)^N
+
+# set a sequence of sample sizes
+rng <- seq(1, 1000)
+# and create vector to save values later
+save <- rng
+  
+# compute the value for every sample size
+for (n in rng) {
+  save[n] <- pe(n)
+}
+
+# plot the results
+plot(rng[-1], save[-1], pch = 20, cex = 0.5, 
+     main = "", 
+     ylab = "1-((N-1)/N)^N", xlab = "N")
+abline(h = 1-exp(-1), col = "blue")
+#abline(h = 0.667, col = "red")
