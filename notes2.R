@@ -2,6 +2,29 @@
 num <- 30
 howoften <- 1
 
+k <- 3
+
+# simulate the beta
+beta <- trueBeta(k)
+beta[1] <- 0.01
+
+70*101+sum(30:100)
+
+simsala <- simulation(num, k = k, beta = beta, linear = FALSE)
+
+# logistic regression model
+logit <- glm(y ~., family = "binomial", data = simsala)
+bootstrapPE(simsala, estimator = 1, linear = FALSE)
+
+
+
+
+2100*6
+
+
+
+
+
 
 
 
@@ -179,3 +202,12 @@ complexity(4,1,2,2,3,3,4)
 getS3method("unique", "array")
 
 getS3method("cv", "lm")
+
+getS3method("sample", "lm")
+
+
+?sample
+?lm.fit
+
+sample
+sample.int
