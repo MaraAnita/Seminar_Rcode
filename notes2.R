@@ -1,4 +1,6 @@
 
+?set.seed
+
 num <- 30
 howoften <- 1
 
@@ -16,6 +18,7 @@ simsala <- simulation(num, k = k, beta = beta, linear = FALSE)
 logit <- glm(y ~., family = "binomial", data = simsala)
 bootstrapPE(simsala, estimator = 1, linear = FALSE)
 
+#y <- rbinom(n, size = 1, prob = probs)
 
 
 
