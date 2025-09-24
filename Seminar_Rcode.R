@@ -294,7 +294,7 @@ simulation <- function(k, n, beta, linear = TRUE) {
     
   }  else {
     # higher variance to prevent perfect separation 
-    epsi <- rnorm(n, sd = n/3)
+    epsi <- rnorm(n, sd = 20)
     
   }
   
