@@ -773,6 +773,44 @@ legend("topleft", legend = c("first approach bootstrap estimator",
 }
 
 
+# ------------------------------------------------------------------------------
+# Check for perfect separation of the data
+# ------------------------------------------------------------------------------
+library("detectseparation")
+
+### this chunk should be able to work independently of the time consuming 
+### simulation
+# set the seed
+set.seed(seed)
+# simulate the beta
+beta <- trueBeta(k)
+beta[1] <- 0.01
+
+
+# as the problem was partly fixed, it was difficult to provoke a case with a 
+# not converging algorithm. That is why the sample size is chosen to be so low
+# Actually as cross-validation and bootstrap often do not use all the data, these
+# warning messages ar much more likely.
+
+num <- 11
+set.seed(1234)
+# simulate the data
+simsala <- simulation(num, k = k, beta = beta, linear = FALSE)
+# detect the separation
+glm(y ~ ., data = simsala,
+    family = binomial("logit"),
+    method = "detect_separation")
+
+num <- 30
+set.seed(1234)
+# simulate the data
+simsala <- simulation(num, k = k, beta = beta, linear = FALSE)
+# detect the separation
+glm(y ~ ., data = simsala,
+    family = binomial("logit"),
+    method = "detect_separation")
+
+
 
 
 
